@@ -1,0 +1,14 @@
+{
+    "name": "Fahimmanowarj5.Bovinelabstimelineessence.Editor.Tests",
+    "references": [
+        "Fahimmanowarj5.Bovinelabstimelineessence.Editor",
+        "Fahimmanowarj5.Bovinelabstimelineessence"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": []
+}

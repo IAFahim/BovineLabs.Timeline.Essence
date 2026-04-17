@@ -1,0 +1,10 @@
+{
+    "name": "Fahimmanowarj5.Bovinelabstimelineessence.Editor",
+    "references": [
+      "Fahimmanowarj5.Bovinelabstimelineessence"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": []
+}
