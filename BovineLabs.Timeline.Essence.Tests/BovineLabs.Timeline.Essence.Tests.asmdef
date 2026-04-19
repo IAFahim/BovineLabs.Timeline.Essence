@@ -1,36 +1,36 @@
 {
-    "name": "BovineLabs.Timeline.Essence.Tests",
-    "rootNamespace": "",
-    "references": [
-        "BovineLabs.Core",
-        "BovineLabs.Core.Extensions",
-        "BovineLabs.Testing",
-        "BovineLabs.Timeline.Essence",
-        "BovineLabs.Timeline.Essence.Data",
-        "Unity.Burst",
-        "Unity.Collections",
-        "Unity.Entities",
-        "Unity.Entities.Graphics",
-        "Unity.Entities.Hybrid",
-        "Unity.InputSystem",
-        "Unity.Mathematics",
-        "Unity.Mathematics.Extensions",
-        "Unity.PerformanceTesting",
-        "Unity.Physics",
-        "Unity.Transforms"
-    ],
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": true,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": false,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+  "name": "BovineLabs.Timeline.Essence.Tests",
+  "rootNamespace": "",
+  "references": [
+    "BovineLabs.Core",
+    "BovineLabs.Core.Extensions",
+    "BovineLabs.Testing",
+    "BovineLabs.Timeline.Essence",
+    "BovineLabs.Timeline.Essence.Data",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Entities",
+    "Unity.Entities.Graphics",
+    "Unity.Entities.Hybrid",
+    "Unity.InputSystem",
+    "Unity.Mathematics",
+    "Unity.Mathematics.Extensions",
+    "Unity.PerformanceTesting",
+    "Unity.Physics",
+    "Unity.Transforms"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
 }

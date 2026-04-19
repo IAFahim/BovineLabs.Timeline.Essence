@@ -1,15 +1,16 @@
+using BovineLabs.Essence;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Essence.Data.TickDistribution;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+
 namespace BovineLabs.Timeline.Essence.Systems
 {
-    using BovineLabs.Essence;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Essence.Data.TickDistribution;
-    using Unity.Burst;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-
     [BurstCompile]
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct TimelineTickDistributionSystem : ISystem
@@ -43,7 +44,7 @@ namespace BovineLabs.Timeline.Essence.Systems
                 StatsLookup = _statsLookup,
                 TargetsLookup = _targetsLookup,
                 TargetsCustoms = _targetsCustoms,
-                IntrinsicWriters = _intrinsicWriterLookup,
+                IntrinsicWriters = _intrinsicWriterLookup
             }.Schedule(state.Dependency);
         }
 
@@ -54,7 +55,7 @@ namespace BovineLabs.Timeline.Essence.Systems
             [ReadOnly] public BufferLookup<Stat> StatsLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustoms;
-            
+
             [NativeDisableParallelForRestriction] public IntrinsicWriter.Lookup IntrinsicWriters;
 
             private void Execute(
@@ -66,10 +67,7 @@ namespace BovineLabs.Timeline.Essence.Systems
                 EnabledRefRO<ClipActivePrevious> previous)
             {
                 var boundEntity = binding.Value;
-                if (boundEntity == Entity.Null || !TargetsLookup.TryGetComponent(boundEntity, out var targets))
-                {
-                    return;
-                }
+                if (boundEntity == Entity.Null || !TargetsLookup.TryGetComponent(boundEntity, out var targets)) return;
 
                 if (!previous.ValueRO)
                 {
@@ -85,7 +83,9 @@ namespace BovineLabs.Timeline.Essence.Systems
                 }
 
                 var duration = (timeTransform.End - timeTransform.Start) * timeTransform.Scale;
-                var t = duration.Value > 0 ? math.saturate((float)(localTime.Value.Value / (double)duration.Value)) : 1f;
+                var t = duration.Value > 0
+                    ? math.saturate((float)(localTime.Value.Value / (double)duration.Value))
+                    : 1f;
 
                 var cdf = data.Cdf.Value.Evaluate(t);
                 var totalTicks = stats.AsMap().GetValueFloor(data.TotalTicksStat);
@@ -97,23 +97,18 @@ namespace BovineLabs.Timeline.Essence.Systems
                 state.AppliedTicks = expected;
 
                 if (state.TicksThisFrame <= 0) return;
-                
+
                 if (data.Intrinsic != 0)
                 {
                     var intrinsicTarget = targets.Get(data.IntrinsicTarget, boundEntity, TargetsCustoms);
-                    if (intrinsicTarget != Entity.Null && IntrinsicWriters.TryGet(intrinsicTarget, out var intrinsicWriter))
-                    {
+                    if (intrinsicTarget != Entity.Null &&
+                        IntrinsicWriters.TryGet(intrinsicTarget, out var intrinsicWriter))
                         intrinsicWriter.Add(data.Intrinsic, state.TicksThisFrame);
-                    }
                 }
 
-                if (data.Event != BovineLabs.Reaction.Data.Conditions.ConditionKey.Null)
-                {
+                if (data.Event != ConditionKey.Null)
                     if (IntrinsicWriters.EventWriter.TryGet(boundEntity, out var eventWriter))
-                    {
                         eventWriter.Trigger(data.Event, state.TicksThisFrame);
-                    }
-                }
             }
         }
     }
