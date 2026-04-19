@@ -1,6 +1,5 @@
 namespace BovineLabs.Timeline.Essence.Data.TickDistribution
 {
-    using BovineLabs.Core.Collections;
     using BovineLabs.Essence.Data;
     using BovineLabs.Reaction.Data.Conditions;
     using BovineLabs.Reaction.Data.Core;
@@ -8,7 +7,7 @@ namespace BovineLabs.Timeline.Essence.Data.TickDistribution
 
     public struct TickDistributionClipData : IComponentData
     {
-        public BlobAssetReference<BlobCurve> Curve;
+        public BlobAssetReference<DistributionCurveBlob> Cdf;
         public StatKey TotalTicksStat;
         public Target StatTarget;
         

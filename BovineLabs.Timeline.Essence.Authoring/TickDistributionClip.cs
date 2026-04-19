@@ -5,6 +5,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
     using BovineLabs.Reaction.Data.Core;
     using BovineLabs.Timeline.Authoring;
     using BovineLabs.Timeline.Essence.Data.TickDistribution;
+    using Unity.Collections;
     using Unity.Entities;
     using UnityEngine;
     using UnityEngine.Timeline;
@@ -12,7 +13,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
     public class TickDistributionClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("X: 0..1 (Time), Y: 0..1 (Tick CDF)")]
-        public AnimationCurve Curve = AnimationCurve.Linear(0, 0, 1, 1);
+        public AnimationCurve curve = AnimationCurve.Linear(0, 0, 1, 1);
 
         public StatSchemaObject TotalTicksStat;
         public Target StatTarget = Target.Target;
@@ -27,17 +28,26 @@ namespace BovineLabs.Timeline.Essence.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (Curve == null || TotalTicksStat == null)
+            if (curve == null || TotalTicksStat == null)
             {
                 return;
             }
 
-            var blob = Core.Collections.BlobCurve.Create(Curve);
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<DistributionCurveBlob>();
+            
+            const int samples = 100;
+            var cdfArray = builder.Allocate(ref root.Cdf, samples);
+            for (var i = 0; i < samples; i++) cdfArray[i] = curve.Evaluate(i / (float)(samples - 1));
+
+            var blob = builder.CreateBlobAssetReference<DistributionCurveBlob>(Allocator.Persistent);
+            builder.Dispose();
+
             context.Baker.AddBlobAsset(ref blob, out _);
 
             context.Baker.AddComponent(clipEntity, new TickDistributionClipData
             {
-                Curve = blob,
+                Cdf = blob,
                 TotalTicksStat = TotalTicksStat,
                 StatTarget = StatTarget,
                 Intrinsic = Intrinsic,

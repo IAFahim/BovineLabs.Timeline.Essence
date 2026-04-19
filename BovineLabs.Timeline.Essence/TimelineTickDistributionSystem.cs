@@ -1,6 +1,5 @@
 namespace BovineLabs.Timeline.Essence.Systems
 {
-    using BovineLabs.Core.Collections;
     using BovineLabs.Essence;
     using BovineLabs.Essence.Data;
     using BovineLabs.Reaction.Data.Core;
@@ -15,26 +14,36 @@ namespace BovineLabs.Timeline.Essence.Systems
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct TimelineTickDistributionSystem : ISystem
     {
-        private IntrinsicWriter.Lookup intrinsicWriterLookup;
+        private IntrinsicWriter.Lookup _intrinsicWriterLookup;
+        private BufferLookup<Stat> _statsLookup;
+        private ComponentLookup<Targets> _targetsLookup;
+        private ComponentLookup<TargetsCustom> _targetsCustoms;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            intrinsicWriterLookup.Create(ref state);
+            _intrinsicWriterLookup.Create(ref state);
+            _statsLookup = state.GetBufferLookup<Stat>(true);
+            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsCustoms = state.GetComponentLookup<TargetsCustom>(true);
+
             state.RequireForUpdate<EssenceConfig>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            intrinsicWriterLookup.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
+            _intrinsicWriterLookup.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
+            _statsLookup.Update(ref state);
+            _targetsLookup.Update(ref state);
+            _targetsCustoms.Update(ref state);
 
             state.Dependency = new DistributeJob
             {
-                StatsLookup = SystemAPI.GetBufferLookup<Stat>(true),
-                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true),
-                TargetsCustoms = SystemAPI.GetComponentLookup<TargetsCustom>(true),
-                IntrinsicWriters = intrinsicWriterLookup,
+                StatsLookup = _statsLookup,
+                TargetsLookup = _targetsLookup,
+                TargetsCustoms = _targetsCustoms,
+                IntrinsicWriters = _intrinsicWriterLookup,
             }.Schedule(state.Dependency);
         }
 
@@ -78,7 +87,7 @@ namespace BovineLabs.Timeline.Essence.Systems
                 var duration = (timeTransform.End - timeTransform.Start) * timeTransform.Scale;
                 var t = duration.Value > 0 ? math.saturate((float)(localTime.Value.Value / (double)duration.Value)) : 1f;
 
-                var cdf = data.Curve.Value.EvaluateIgnoreWrapMode(t);
+                var cdf = data.Cdf.Value.Evaluate(t);
                 var totalTicks = stats.AsMap().GetValueFloor(data.TotalTicksStat);
 
                 var expected = (int)math.floor(cdf * totalTicks);
@@ -88,16 +97,22 @@ namespace BovineLabs.Timeline.Essence.Systems
                 state.AppliedTicks = expected;
 
                 if (state.TicksThisFrame <= 0) return;
-                var intrinsicTarget = targets.Get(data.IntrinsicTarget, boundEntity, TargetsCustoms);
-                if (intrinsicTarget != Entity.Null && IntrinsicWriters.TryGet(intrinsicTarget, out var intrinsicWriter))
+                
+                if (data.Intrinsic != 0)
                 {
-                    intrinsicWriter.Add(data.Intrinsic, state.TicksThisFrame);
+                    var intrinsicTarget = targets.Get(data.IntrinsicTarget, boundEntity, TargetsCustoms);
+                    if (intrinsicTarget != Entity.Null && IntrinsicWriters.TryGet(intrinsicTarget, out var intrinsicWriter))
+                    {
+                        intrinsicWriter.Add(data.Intrinsic, state.TicksThisFrame);
+                    }
                 }
 
-                if (data.Event == BovineLabs.Reaction.Data.Conditions.ConditionKey.Null) return;
-                if (IntrinsicWriters.EventWriter.TryGet(boundEntity, out var eventWriter))
+                if (data.Event != BovineLabs.Reaction.Data.Conditions.ConditionKey.Null)
                 {
-                    eventWriter.Trigger(data.Event, state.TicksThisFrame);
+                    if (IntrinsicWriters.EventWriter.TryGet(boundEntity, out var eventWriter))
+                    {
+                        eventWriter.Trigger(data.Event, state.TicksThisFrame);
+                    }
                 }
             }
         }
