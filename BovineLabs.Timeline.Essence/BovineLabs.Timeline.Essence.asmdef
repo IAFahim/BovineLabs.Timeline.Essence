@@ -22,7 +22,9 @@
         "BovineLabs.Reaction.Data",
         "BovineLabs.Essence.Data",
         "BovineLabs.Reaction",
-        "BovineLabs.Essence"
+        "BovineLabs.Essence",
+        "BovineLabs.Timeline",
+        "BovineLabs.Timeline.Data"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],

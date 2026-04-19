@@ -20,7 +20,9 @@
         "BovineLabs.Essence.Authoring",
         "BovineLabs.Reaction.Authoring",
         "BovineLabs.Essence.Data",
-        "BovineLabs.Reaction.Data"
+        "BovineLabs.Reaction.Data",
+        "Unity.Timeline",
+        "BovineLabs.Timeline.Authoring"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
