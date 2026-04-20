@@ -56,7 +56,8 @@ namespace BovineLabs.Timeline.Essence.Systems
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustoms;
 
-            [NativeDisableParallelForRestriction] public IntrinsicWriter.Lookup IntrinsicWriters;
+            // Handled synchronously avoiding native overlap.
+            public IntrinsicWriter.Lookup IntrinsicWriters;
 
             private void Execute(
                 ref TickDistributionState state,
