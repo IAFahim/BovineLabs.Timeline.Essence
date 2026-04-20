@@ -20,7 +20,13 @@
     "Unity.Mathematics.Extensions",
     "Unity.Physics",
     "Unity.Transforms",
-    "BovineLabs.Quill"
+    "BovineLabs.Quill",
+    "BovineLabs.EntityLinks",
+    "BovineLabs.Timeline.Data",
+    "BovineLabs.Reaction.Data",
+    "BovineLabs.Essence",
+    "BovineLabs.Essence.Data",
+    "BovineLabs.Reaction"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [],
