@@ -6,6 +6,8 @@
     "BovineLabs.Core.Editor",
     "BovineLabs.Core.Extensions",
     "BovineLabs.Core.Extensions.Editor",
+    "BovineLabs.Essence.Authoring",
+    "BovineLabs.Reaction.Authoring",
     "BovineLabs.Timeline.Essence",
     "BovineLabs.Timeline.Essence.Authoring",
     "BovineLabs.Timeline.Essence.Data",
