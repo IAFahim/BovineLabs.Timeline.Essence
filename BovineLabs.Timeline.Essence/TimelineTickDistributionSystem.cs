@@ -56,7 +56,6 @@ namespace BovineLabs.Timeline.Essence.Systems
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustoms;
 
-            // Handled synchronously avoiding native overlap.
             public IntrinsicWriter.Lookup IntrinsicWriters;
 
             private void Execute(
@@ -68,7 +67,7 @@ namespace BovineLabs.Timeline.Essence.Systems
                 EnabledRefRO<ClipActivePrevious> previous)
             {
                 var boundEntity = binding.Value;
-                if (boundEntity == Entity.Null || !TargetsLookup.TryGetComponent(boundEntity, out var targets)) return;
+                if (boundEntity == Entity.Null ||!TargetsLookup.TryGetComponent(boundEntity, out var targets)) return;
 
                 if (!previous.ValueRO)
                 {
@@ -77,7 +76,7 @@ namespace BovineLabs.Timeline.Essence.Systems
                 }
 
                 var statTarget = targets.Get(data.StatTarget, boundEntity, TargetsCustoms);
-                if (statTarget == Entity.Null || !StatsLookup.TryGetBuffer(statTarget, out var stats))
+                if (statTarget == Entity.Null ||!StatsLookup.TryGetBuffer(statTarget, out var stats))
                 {
                     state.TicksThisFrame = 0;
                     return;
