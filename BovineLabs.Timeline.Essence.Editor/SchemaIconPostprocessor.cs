@@ -7,12 +7,24 @@ namespace BovineLabs.Timeline.Essence.Editor
     using UnityEditor;
     using UnityEngine;
 
+    [InitializeOnLoad]
     public sealed class SchemaIconPostprocessor : AssetPostprocessor
     {
+        
+        static SchemaIconPostprocessor()  // <-- add this block
+        {
+            iconCache = null;
+            schemaFolders = null;
+            packageRoot = null;
+
+            EditorApplication.delayCall -= FixExisting;
+            EditorApplication.delayCall += FixExisting;
+        }
+        
         const string EditorFolder = "BovineLabs.Timeline.Essence.Editor";
-        const string EventIconFile = "Event.png";
-        const string StatIconFile = "Stats.png";
-        const string IntrinsicIconFile = "Int.png";
+        const string EventIconFile = "ConditionEventObject.png";
+        const string StatIconFile = "StatSchemaObject.png";
+        const string IntrinsicIconFile = "IntrinsicSchemaObject.png";
 
         const string SchemaAssetsRoot = "Assets/Settings/Schemas";
         const string SchemaAssetsFilter = " t:ConditionEventObject t:StatSchemaObject t:IntrinsicSchemaObject";
@@ -146,7 +158,7 @@ namespace BovineLabs.Timeline.Essence.Editor
         }
 
         [MenuItem("Tools/Fix Schema SO Icons")]
-        static void FixExisting()
+        public static void FixExisting()
         {
             if (IconCache.Count == 0)
             {

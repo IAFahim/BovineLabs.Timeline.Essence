@@ -1,8 +1,8 @@
-using Unity.Entities;
-using Unity.Mathematics;
-
-namespace BovineLabs.Timeline.Essence.Data.TickDistribution
+namespace BovineLabs.Essence.Data.Actions
 {
+    using Unity.Entities;
+    using Unity.Mathematics;
+
     public struct DistributionCurveBlob
     {
         public BlobArray<float> Cdf;
@@ -10,7 +10,6 @@ namespace BovineLabs.Timeline.Essence.Data.TickDistribution
         public float Evaluate(float t)
         {
             if (t <= 0f) return 0f;
-
             if (t >= 1f) return 1f;
 
             var maxIndex = Cdf.Length - 1;
