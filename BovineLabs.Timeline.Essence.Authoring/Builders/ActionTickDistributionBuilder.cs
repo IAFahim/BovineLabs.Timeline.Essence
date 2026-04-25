@@ -1,4 +1,3 @@
-// BovineLabs.Essence.Data/Builders/ActionTickDistributionBuilder.cs
 namespace BovineLabs.Essence.Data.Builders
 {
     using System;

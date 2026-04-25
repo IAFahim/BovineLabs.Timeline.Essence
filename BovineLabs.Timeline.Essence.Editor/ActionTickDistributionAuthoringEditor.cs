@@ -1,4 +1,3 @@
-// BovineLabs.Essence.Editor/ActionTickDistributionAuthoringEditor.cs
 namespace BovineLabs.Essence.Editor
 {
     using BovineLabs.Essence.Authoring.Actions;

@@ -1,4 +1,3 @@
-// BovineLabs.Essence.Authoring/Actions/ActionTickDistributionAuthoring.cs
 namespace BovineLabs.Essence.Authoring.Actions
 {
     using BovineLabs.Core.Collections;

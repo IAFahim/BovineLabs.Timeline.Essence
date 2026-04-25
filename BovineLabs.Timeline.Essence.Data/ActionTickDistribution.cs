@@ -1,4 +1,3 @@
-// BovineLabs.Essence.Data/Actions/ActionTickDistribution.cs
 namespace BovineLabs.Essence.Data.Actions
 {
     using BovineLabs.Core.Collections;

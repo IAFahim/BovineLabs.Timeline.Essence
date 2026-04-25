@@ -1,4 +1,3 @@
-// BovineLabs.Essence.Data/Actions/ActionTickDistributionState.cs
 namespace BovineLabs.Essence.Data.Actions
 {
     using Unity.Entities;

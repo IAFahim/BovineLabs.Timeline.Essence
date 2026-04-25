@@ -1,5 +1,3 @@
-// BovineLabs.Essence/Actions/ActionTickDistributionSystem.cs
-
 namespace BovineLabs.Essence.Actions
 {
     using System;
@@ -15,7 +13,6 @@ namespace BovineLabs.Essence.Actions
     using Unity.Burst;
     using Unity.Burst.CompilerServices;
     using Unity.Collections;
-    using Unity.Collections.LowLevel.Unsafe;
     using Unity.Entities;
     using Unity.Jobs;
     using Unity.Mathematics;
@@ -118,11 +115,11 @@ namespace BovineLabs.Essence.Actions
                     Target.Source => targets.Source,
                     Target.Target => targets.Target,
                     Target.Self => self,
-                    Target.Custom0 => this.TargetsCustoms.HasComponent(self)
-                        ? this.TargetsCustoms[self].Target0
+                    Target.Custom0 => this.TargetsCustoms.TryGetComponent(self, out var tc0)
+                        ? tc0.Target0
                         : Entity.Null,
-                    Target.Custom1 => this.TargetsCustoms.HasComponent(self)
-                        ? this.TargetsCustoms[self].Target1
+                    Target.Custom1 => this.TargetsCustoms.TryGetComponent(self, out var tc1)
+                        ? tc1.Target1
                         : Entity.Null,
                     _ => Entity.Null
                 };
@@ -211,29 +208,25 @@ namespace BovineLabs.Essence.Actions
             [ReadOnly] public NativeParallelMultiHashMap<Entity, IntrinsicAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public IntrinsicWriter.Lookup IntrinsicWriters;
 
-            [NativeDisableContainerSafetyRestriction]
-            private NativeList<IntrinsicAmount> values;
-
             public void Execute(int index)
             {
                 var key = this.Keys[index];
                 if (Hint.Unlikely(!this.IntrinsicWriters.TryGet(key, out var intrinsicWriter))) return;
 
-                if (Hint.Unlikely(!this.values.IsCreated))
-                    this.values = new NativeList<IntrinsicAmount>(Allocator.Temp);
-                this.values.Clear();
+                var values = new NativeList<IntrinsicAmount>(Allocator.Temp);
 
                 this.GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                this.values.Add(value);
+                values.Add(value);
 
                 while (this.GroupChanges.TryGetNextValue(out value, ref it))
                 {
-                    var existingIndex = this.values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) this.values.Add(value);
-                    else this.values.ElementAt(existingIndex).Amount += value.Amount;
+                    var existingIndex = values.IndexOf(value);
+                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
+                    else values.ElementAt(existingIndex).Amount += value.Amount;
                 }
 
-                foreach (var i in this.values) intrinsicWriter.Add(i.Intrinsic, i.Amount);
+                foreach (var i in values) intrinsicWriter.Add(i.Intrinsic, i.Amount);
+                values.Dispose();
             }
         }
 
@@ -244,28 +237,25 @@ namespace BovineLabs.Essence.Actions
             [ReadOnly] public NativeParallelMultiHashMap<Entity, EventAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup EventWriters;
 
-            [NativeDisableContainerSafetyRestriction]
-            private NativeList<EventAmount> values;
-
             public void Execute(int index)
             {
                 var key = this.Keys[index];
                 if (Hint.Unlikely(!this.EventWriters.TryGet(key, out var eventWriter))) return;
 
-                if (Hint.Unlikely(!this.values.IsCreated)) this.values = new NativeList<EventAmount>(Allocator.Temp);
-                this.values.Clear();
+                var values = new NativeList<EventAmount>(Allocator.Temp);
 
                 this.GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                this.values.Add(value);
+                values.Add(value);
 
                 while (this.GroupChanges.TryGetNextValue(out value, ref it))
                 {
-                    var existingIndex = this.values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) this.values.Add(value);
-                    else this.values.ElementAt(existingIndex).Amount += value.Amount;
+                    var existingIndex = values.IndexOf(value);
+                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
+                    else values.ElementAt(existingIndex).Amount += value.Amount;
                 }
 
-                foreach (var e in this.values) eventWriter.Trigger(e.Event, e.Amount);
+                foreach (var e in values) eventWriter.Trigger(e.Event, e.Amount);
+                values.Dispose();
             }
         }
 
