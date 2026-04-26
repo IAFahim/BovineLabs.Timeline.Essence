@@ -1,10 +1,10 @@
+using BovineLabs.Core.Collections;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using Unity.Entities;
+
 namespace BovineLabs.Essence.Data.Actions
 {
-    using BovineLabs.Core.Collections;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using Unity.Entities;
-
     public struct ActionTickDistribution : IComponentData
     {
         public BlobAssetReference<BlobCurve> Curve;

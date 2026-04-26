@@ -1,8 +1,8 @@
+using Unity.Entities;
+using Unity.Mathematics;
+
 namespace BovineLabs.Essence.Data
 {
-    using Unity.Entities;
-    using Unity.Mathematics;
-
     public struct DistributionCurveBlob
     {
         public BlobArray<float> Cdf;
@@ -12,13 +12,13 @@ namespace BovineLabs.Essence.Data
             if (t <= 0f) return 0f;
             if (t >= 1f) return 1f;
 
-            var maxIndex = this.Cdf.Length - 1;
+            var maxIndex = Cdf.Length - 1;
             var floatIndex = t * maxIndex;
             var index = (int)math.floor(floatIndex);
 
-            if (index >= maxIndex) return this.Cdf[maxIndex];
+            if (index >= maxIndex) return Cdf[maxIndex];
 
-            return math.lerp(this.Cdf[index], this.Cdf[index + 1], floatIndex - index);
+            return math.lerp(Cdf[index], Cdf[index + 1], floatIndex - index);
         }
     }
 }

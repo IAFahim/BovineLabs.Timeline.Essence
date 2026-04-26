@@ -1,18 +1,18 @@
+using BovineLabs.Core.Collections;
+using BovineLabs.Essence.Data.Actions;
+using BovineLabs.Reaction.Authoring;
+using BovineLabs.Reaction.Authoring.Conditions;
+using BovineLabs.Reaction.Authoring.Core;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using Unity.Entities;
+using UnityEngine;
+
 namespace BovineLabs.Essence.Authoring.Actions
 {
-    using BovineLabs.Core.Collections;
-    using BovineLabs.Essence.Data.Actions;
-    using BovineLabs.Reaction.Authoring;
-    using BovineLabs.Reaction.Authoring.Conditions;
-    using BovineLabs.Reaction.Authoring.Core;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using Unity.Collections;
-    using Unity.Entities;
-    using UnityEngine;
-
     [ReactionAuthoring]
-    [DisallowMultipleComponent][RequireComponent(typeof(ReactionAuthoring))]
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(ReactionAuthoring))]
     public class ActionTickDistributionAuthoring : MonoBehaviour
     {
         public AnimationCurve Curve = AnimationCurve.Linear(0, 0, 1, 1);
@@ -30,12 +30,12 @@ namespace BovineLabs.Essence.Authoring.Actions
             {
                 if (authoring.Curve == null || authoring.TicDuration == null || authoring.TicPerSecond == null) return;
 
-                var blob = BlobCurve.Create(authoring.Curve, Allocator.Persistent);
-                this.AddBlobAsset(ref blob, out _);
+                var blob = BlobCurve.Create(authoring.Curve);
+                AddBlobAsset(ref blob, out _);
 
-                var entity = this.GetEntity(TransformUsageFlags.None);
+                var entity = GetEntity(TransformUsageFlags.None);
 
-                this.AddComponent(entity, new ActionTickDistribution
+                AddComponent(entity, new ActionTickDistribution
                 {
                     Curve = blob,
                     From = authoring.From,
@@ -46,8 +46,8 @@ namespace BovineLabs.Essence.Authoring.Actions
                     TickStore = authoring.TickStore,
                     OnTic = authoring.OnTic != null ? authoring.OnTic.Key : ConditionKey.Null
                 });
-                
-                this.AddComponent<ActionTickDistributionState>(entity);
+
+                AddComponent<ActionTickDistributionState>(entity);
             }
         }
     }

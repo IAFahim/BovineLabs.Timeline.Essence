@@ -1,17 +1,17 @@
+using BovineLabs.Essence.Authoring.Actions;
+using UnityEditor;
+using UnityEngine;
+
 namespace BovineLabs.Essence.Editor
 {
-    using BovineLabs.Essence.Authoring.Actions;
-    using UnityEditor;
-    using UnityEngine;
-
     [CustomEditor(typeof(ActionTickDistributionAuthoring))]
-    public class ActionTickDistributionAuthoringEditor : Editor
+    public class ActionTickDistributionAuthoringEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
-            this.DrawDefaultInspector();
+            DrawDefaultInspector();
 
-            var authoring = (ActionTickDistributionAuthoring)this.target;
+            var authoring = (ActionTickDistributionAuthoring)target;
             var curve = authoring.Curve;
 
             if (curve == null || curve.keys.Length == 0) return;
@@ -32,8 +32,9 @@ namespace BovineLabs.Essence.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Tick Preview (Assuming 10 total ticks)", EditorStyles.boldLabel);
-            var rect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(24), GUILayout.ExpandWidth(true));
-            
+            var rect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(24),
+                GUILayout.ExpandWidth(true));
+
             EditorGUI.DrawRect(rect, new Color(0.15f, 0.15f, 0.15f));
             Handles.DrawSolidRectangleWithOutline(rect, Color.clear, Color.gray);
 
@@ -52,6 +53,7 @@ namespace BovineLabs.Essence.Editor
                     lastExpected = expected;
                 }
             }
+
             Handles.color = Color.white;
         }
     }

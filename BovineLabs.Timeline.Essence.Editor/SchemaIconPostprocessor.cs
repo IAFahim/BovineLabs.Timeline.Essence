@@ -1,17 +1,28 @@
+using System;
+using System.Collections.Generic;
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Authoring.Conditions;
+using UnityEditor;
+using UnityEngine;
+
 namespace BovineLabs.Timeline.Essence.Editor
 {
-    using System;
-    using System.Collections.Generic;
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Authoring.Conditions;
-    using UnityEditor;
-    using UnityEngine;
-
     [InitializeOnLoad]
     public sealed class SchemaIconPostprocessor : AssetPostprocessor
     {
-        
-        static SchemaIconPostprocessor()  // <-- add this block
+        private const string EditorFolder = "BovineLabs.Timeline.Essence.Editor";
+        private const string EventIconFile = "ConditionEventObject.png";
+        private const string StatIconFile = "StatSchemaObject.png";
+        private const string IntrinsicIconFile = "IntrinsicSchemaObject.png";
+
+        private const string SchemaAssetsRoot = "Assets/Settings/Schemas";
+        private const string SchemaAssetsFilter = " t:ConditionEventObject t:StatSchemaObject t:IntrinsicSchemaObject";
+
+        private static string packageRoot;
+        private static Dictionary<Type, Texture2D> iconCache;
+        private static HashSet<string> schemaFolders;
+
+        static SchemaIconPostprocessor() // <-- add this block
         {
             iconCache = null;
             schemaFolders = null;
@@ -20,27 +31,12 @@ namespace BovineLabs.Timeline.Essence.Editor
             EditorApplication.delayCall -= FixExisting;
             EditorApplication.delayCall += FixExisting;
         }
-        
-        const string EditorFolder = "BovineLabs.Timeline.Essence.Editor";
-        const string EventIconFile = "ConditionEventObject.png";
-        const string StatIconFile = "StatSchemaObject.png";
-        const string IntrinsicIconFile = "IntrinsicSchemaObject.png";
 
-        const string SchemaAssetsRoot = "Assets/Settings/Schemas";
-        const string SchemaAssetsFilter = " t:ConditionEventObject t:StatSchemaObject t:IntrinsicSchemaObject";
-
-        static string packageRoot;
-        static Dictionary<Type, Texture2D> iconCache;
-        static HashSet<string> schemaFolders;
-
-        static string PackageRoot
+        private static string PackageRoot
         {
             get
             {
-                if (packageRoot != null)
-                {
-                    return packageRoot;
-                }
+                if (packageRoot != null) return packageRoot;
 
                 var guids = AssetDatabase.FindAssets($"{nameof(SchemaIconPostprocessor)} t:MonoScript");
                 if (guids.Length > 0)
@@ -60,14 +56,11 @@ namespace BovineLabs.Timeline.Essence.Editor
             }
         }
 
-        static Dictionary<Type, Texture2D> IconCache
+        private static Dictionary<Type, Texture2D> IconCache
         {
             get
             {
-                if (iconCache != null)
-                {
-                    return iconCache;
-                }
+                if (iconCache != null) return iconCache;
 
                 iconCache = new Dictionary<Type, Texture2D>();
                 if (string.IsNullOrEmpty(PackageRoot))
@@ -83,26 +76,46 @@ namespace BovineLabs.Timeline.Essence.Editor
             }
         }
 
-        static HashSet<string> SchemaFolders
+        private static HashSet<string> SchemaFolders
         {
             get
             {
-                if (schemaFolders != null)
-                {
-                    return schemaFolders;
-                }
+                if (schemaFolders != null) return schemaFolders;
 
                 schemaFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     "Assets/Settings/Schemas/Events",
                     "Assets/Settings/Schemas/Stats",
-                    "Assets/Settings/Schemas/Intrinsics",
+                    "Assets/Settings/Schemas/Intrinsics"
                 };
                 return schemaFolders;
             }
         }
 
-        static void TryCacheIcon(Type type, string fileName)
+        private static void OnPostprocessAllAssets(
+            string[] importedAssets,
+            string[] deletedAssets,
+            string[] movedAssets,
+            string[] movedFromAssetPaths)
+        {
+            if (IconCache.Count == 0) return;
+
+            foreach (var path in importedAssets)
+            {
+                if (!IsSchemaAsset(path)) continue;
+
+                TryApplyIcon(path);
+            }
+
+            foreach (var path in movedAssets)
+            {
+                if (!IsSchemaAsset(path)) continue;
+
+                TryApplyIcon(path);
+            }
+        }
+
+        private static void TryCacheIcon(Type type, string fileName)
         {
             var path = $"{PackageRoot}/{fileName}";
             var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -115,46 +128,11 @@ namespace BovineLabs.Timeline.Essence.Editor
             iconCache[type] = icon;
         }
 
-        static bool IsSchemaAsset(string path)
+        private static bool IsSchemaAsset(string path)
         {
-            if (!path.StartsWith(SchemaAssetsRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
+            if (!path.StartsWith(SchemaAssetsRoot, StringComparison.OrdinalIgnoreCase)) return false;
 
             return path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase);
-        }
-
-        static void OnPostprocessAllAssets(
-            string[] importedAssets,
-            string[] deletedAssets,
-            string[] movedAssets,
-            string[] movedFromAssetPaths)
-        {
-            if (IconCache.Count == 0)
-            {
-                return;
-            }
-
-            foreach (var path in importedAssets)
-            {
-                if (!IsSchemaAsset(path))
-                {
-                    continue;
-                }
-
-                TryApplyIcon(path);
-            }
-
-            foreach (var path in movedAssets)
-            {
-                if (!IsSchemaAsset(path))
-                {
-                    continue;
-                }
-
-                TryApplyIcon(path);
-            }
         }
 
         [MenuItem("Tools/Fix Schema SO Icons")]
@@ -172,12 +150,8 @@ namespace BovineLabs.Timeline.Essence.Editor
             {
                 var guids = AssetDatabase.FindAssets(SchemaAssetsFilter, new[] { folder });
                 foreach (var guid in guids)
-                {
                     if (TryApplyIcon(AssetDatabase.GUIDToAssetPath(guid)))
-                    {
                         count++;
-                    }
-                }
             }
 
             if (count > 0)
@@ -191,29 +165,19 @@ namespace BovineLabs.Timeline.Essence.Editor
             }
         }
 
-        static bool TryApplyIcon(string path)
+        private static bool TryApplyIcon(string path)
         {
             var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-            if (asset == null)
-            {
-                return false;
-            }
+            if (asset == null) return false;
 
-            if (!IconCache.TryGetValue(asset.GetType(), out var icon))
-            {
-                return false;
-            }
+            if (!IconCache.TryGetValue(asset.GetType(), out var icon)) return false;
 
             var current = EditorGUIUtility.GetIconForObject(asset);
-            if (current == icon)
-            {
-                return false;
-            }
+            if (current == icon) return false;
 
             EditorGUIUtility.SetIconForObject(asset, icon);
             EditorUtility.SetDirty(asset);
             return true;
         }
-
     }
 }

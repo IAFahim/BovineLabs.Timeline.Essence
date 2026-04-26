@@ -1,7 +1,7 @@
+using Unity.Entities;
+
 namespace BovineLabs.Essence.Data.Actions
 {
-    using Unity.Entities;
-
     public struct ActionTickDistributionState : IComponentData
     {
         public float ElapsedTime;

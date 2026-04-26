@@ -1,9 +1,8 @@
+using BovineLabs.Core.EntityCommands;
+using BovineLabs.Essence.Data.Actions;
+
 namespace BovineLabs.Essence.Data.Builders
 {
-    using System;
-    using BovineLabs.Core.EntityCommands;
-    using BovineLabs.Essence.Data.Actions;
-
     public struct ActionTickDistributionBuilder
     {
         public ActionTickDistribution Config;
@@ -11,7 +10,7 @@ namespace BovineLabs.Essence.Data.Builders
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
         {
-            builder.AddComponent(this.Config);
+            builder.AddComponent(Config);
             builder.AddComponent<ActionTickDistributionState>();
         }
     }
