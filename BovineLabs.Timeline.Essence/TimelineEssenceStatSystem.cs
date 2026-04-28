@@ -1,4 +1,3 @@
-using BovineLabs.Core.Extensions;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
@@ -18,7 +17,7 @@ namespace BovineLabs.Timeline.Essence
         {
             var addStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
-            
+
             var targetsLookup = SystemAPI.GetComponentLookup<Targets>(true);
             var customsLookup = SystemAPI.GetComponentLookup<TargetsCustom>(true);
 
@@ -69,10 +68,11 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup, out var target))
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                        out var target))
                 {
                     var modifier = new StatModifier { Type = data.Stat, ModifyType = data.ModifyType };
-                    
+
                     if (data.ModifyType == StatModifyType.Added)
                         modifier.Value = (int)data.Value;
                     else
@@ -101,10 +101,8 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup, out var target))
-                {
-                    Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
-                }
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                        out var target)) Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
             }
         }
 
@@ -125,13 +123,11 @@ namespace BovineLabs.Timeline.Essence
                     StatChangeds.SetComponentEnabled(remove.Target, true);
                     var array = buffer.AsNativeArray();
                     for (var i = array.Length - 1; i >= 0; i--)
-                    {
                         if (array[i].SourceEntity == remove.Source)
                         {
                             buffer.RemoveAtSwapBack(i);
                             break; // 1 modifier per clip entity
                         }
-                    }
                 }
 
                 while (Adds.TryDequeue(out var add))

@@ -4,7 +4,6 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Entities;
-using UnityEngine;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Essence.Authoring

@@ -11,5 +11,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
     [TrackBindingType(typeof(StatAuthoring))]
     [TrackColor(0.9f, 0.4f, 0.2f)]
     [DisplayName("BovineLabs/Essence/Timeline Event")]
-    public sealed class TimelineEssenceEventTrack : DOTSTrack {}
+    public sealed class TimelineEssenceEventTrack : DOTSTrack
+    {
+    }
 }

@@ -225,7 +225,6 @@ namespace BovineLabs.Essence.Actions
                     values.Add(value);
 
                     while (GroupChanges.TryGetNextValue(out value, ref it))
-                    {
                         if (valueMap.TryGetValue(value.Intrinsic, out var idx))
                         {
                             var v = values[idx];
@@ -237,7 +236,6 @@ namespace BovineLabs.Essence.Actions
                             valueMap.Add(value.Intrinsic, values.Length);
                             values.Add(value);
                         }
-                    }
                 }
 
                 foreach (var i in values) intrinsicWriter.Add(i.Intrinsic, i.Amount);
@@ -267,7 +265,6 @@ namespace BovineLabs.Essence.Actions
                     values.Add(value);
 
                     while (GroupChanges.TryGetNextValue(out value, ref it))
-                    {
                         if (valueMap.TryGetValue(value.Event, out var idx))
                         {
                             var v = values[idx];
@@ -279,7 +276,6 @@ namespace BovineLabs.Essence.Actions
                             valueMap.Add(value.Event, values.Length);
                             values.Add(value);
                         }
-                    }
                 }
 
                 foreach (var e in values) eventWriter.Trigger(e.Event, e.Amount);

@@ -1,7 +1,6 @@
 using System;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Essence;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
@@ -27,7 +26,8 @@ namespace BovineLabs.Timeline.Essence
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            intrinsicChanges = new NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>(64, Allocator.Persistent);
+            intrinsicChanges =
+                new NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             targetsLookup = state.GetComponentLookup<Targets>(true);
             customsLookup = state.GetComponentLookup<TargetsCustom>(true);
@@ -85,10 +85,8 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Intrinsic.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup, out var target))
-                {
-                    IntrinsicChanges.Add(target, new IntrinsicAmount(data.Intrinsic, data.Amount));
-                }
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                        out var target)) IntrinsicChanges.Add(target, new IntrinsicAmount(data.Intrinsic, data.Amount));
             }
         }
 
@@ -98,7 +96,10 @@ namespace BovineLabs.Timeline.Essence
             public NativeList<Entity> UniqueKeys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, IntrinsicAmount>.ReadOnly GroupChanges;
 
-            public void Execute() => GroupChanges.GetUniqueKeyArray(UniqueKeys);
+            public void Execute()
+            {
+                GroupChanges.GetUniqueKeyArray(UniqueKeys);
+            }
         }
 
         [BurstCompile]
@@ -134,9 +135,21 @@ namespace BovineLabs.Timeline.Essence
             public readonly IntrinsicKey Intrinsic;
             public int Amount;
 
-            public IntrinsicAmount(IntrinsicKey intrinsic, int amount) { Intrinsic = intrinsic; Amount = amount; }
-            public bool Equals(IntrinsicAmount other) => Intrinsic.Equals(other.Intrinsic);
-            public override int GetHashCode() => Intrinsic.GetHashCode();
+            public IntrinsicAmount(IntrinsicKey intrinsic, int amount)
+            {
+                Intrinsic = intrinsic;
+                Amount = amount;
+            }
+
+            public bool Equals(IntrinsicAmount other)
+            {
+                return Intrinsic.Equals(other.Intrinsic);
+            }
+
+            public override int GetHashCode()
+            {
+                return Intrinsic.GetHashCode();
+            }
         }
     }
 }

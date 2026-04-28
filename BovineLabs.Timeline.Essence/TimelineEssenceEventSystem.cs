@@ -1,7 +1,6 @@
 using System;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
@@ -85,10 +84,8 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup, out var target))
-                {
-                    EventChanges.Add(target, new EventAmount(data.Event, data.Value));
-                }
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                        out var target)) EventChanges.Add(target, new EventAmount(data.Event, data.Value));
             }
         }
 
@@ -98,7 +95,10 @@ namespace BovineLabs.Timeline.Essence
             public NativeList<Entity> UniqueKeys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, EventAmount>.ReadOnly GroupChanges;
 
-            public void Execute() => GroupChanges.GetUniqueKeyArray(UniqueKeys);
+            public void Execute()
+            {
+                GroupChanges.GetUniqueKeyArray(UniqueKeys);
+            }
         }
 
         [BurstCompile]
@@ -134,9 +134,21 @@ namespace BovineLabs.Timeline.Essence
             public readonly ConditionKey Event;
             public int Amount;
 
-            public EventAmount(ConditionKey evt, int amount) { Event = evt; Amount = amount; }
-            public bool Equals(EventAmount other) => Event.Equals(other.Event);
-            public override int GetHashCode() => Event.GetHashCode();
+            public EventAmount(ConditionKey evt, int amount)
+            {
+                Event = evt;
+                Amount = amount;
+            }
+
+            public bool Equals(EventAmount other)
+            {
+                return Event.Equals(other.Event);
+            }
+
+            public override int GetHashCode()
+            {
+                return Event.GetHashCode();
+            }
         }
     }
 }

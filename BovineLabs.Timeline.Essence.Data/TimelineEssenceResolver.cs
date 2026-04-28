@@ -8,10 +8,10 @@ namespace BovineLabs.Timeline.Essence.Data
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryResolveTarget(
-            Target target, 
-            Entity binding, 
-            in ComponentLookup<Targets> targets, 
-            in ComponentLookup<TargetsCustom> customs, 
+            Target target,
+            Entity binding,
+            in ComponentLookup<Targets> targets,
+            in ComponentLookup<TargetsCustom> customs,
             out Entity resolved)
         {
             if (target is Target.Self or Target.None)

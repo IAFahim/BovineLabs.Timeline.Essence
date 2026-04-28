@@ -3,7 +3,6 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Entities;
-using UnityEngine;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Essence.Authoring
@@ -27,7 +26,10 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 RouteTo = routeTo,
                 Stat = stat.Key,
                 ModifyType = StatAuthoringUtil.GetModifier(modifyType),
-                Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced or StatAuthoringType.Less ? -value : value
+                Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced
+                    or StatAuthoringType.Less
+                    ? -value
+                    : value
             });
 
             base.Bake(clipEntity, context);
