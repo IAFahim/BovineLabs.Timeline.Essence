@@ -6,6 +6,7 @@ using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -105,7 +106,8 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                 DrawCurvedTether(selfPos, targetPos, label, color, index);
             }
 
-            private void DrawCurvedTether(float3 start, float3 end, FixedString32Bytes label, Color color, int index)
+            private unsafe void DrawCurvedTether(float3 start, float3 end, FixedString32Bytes label, Color color,
+                int index)
             {
                 var distance = math.distance(start, end);
                 var mid = (start + end) * 0.5f;
@@ -113,7 +115,15 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                 mid.y += distance * 0.2f + index * 0.1f;
 
                 const int segments = 16;
-                var lines = new NativeList<float3>(segments * 2, Allocator.Temp);
+                const int points = segments * 2;
+                var linesData = stackalloc float3[points];
+                var lines = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<float3>(linesData, points,
+                    Allocator.None);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref lines, AtomicSafetyHandle.GetTempMemoryHandle());
+#endif
+
+                var lineLength = 0;
                 var prev = start;
 
                 for (var i = 1; i <= segments; i++)
@@ -121,21 +131,20 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                     var t = i / (float)segments;
                     var current = math.lerp(math.lerp(start, mid, t), math.lerp(mid, end, t), t);
 
-                    lines.Add(prev);
-                    lines.Add(current);
+                    lines[lineLength++] = prev;
+                    lines[lineLength++] = current;
                     prev = current;
                 }
 
-                Drawer.Lines(lines.AsArray(), color);
+                Drawer.Lines(lines.GetSubArray(0, lineLength), color);
 
-                var dir = math.normalize(end - lines[lines.Length - 4]);
+                var dir = math.normalize(end - lines[lineLength - 4]);
                 Drawer.Arrow(end - dir * 0.1f, dir * 0.25f, color);
 
                 Drawer.Text32(mid + new float3(0, 0.2f, 0), label, color, 11f);
-                lines.Dispose();
             }
 
-            private void DrawSelfLoop(float3 pos, FixedString32Bytes label, Color color, int index)
+            private unsafe void DrawSelfLoop(float3 pos, FixedString32Bytes label, Color color, int index)
             {
                 var height = 1.0f + index * 0.3f;
                 var spread = 0.5f + index * 0.1f;
@@ -146,7 +155,15 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                 var p3 = pos;
 
                 const int segments = 16;
-                var lines = new NativeList<float3>(segments * 2, Allocator.Temp);
+                const int points = segments * 2;
+                var linesData = stackalloc float3[points];
+                var lines = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<float3>(linesData, points,
+                    Allocator.None);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref lines, AtomicSafetyHandle.GetTempMemoryHandle());
+#endif
+
+                var lineLength = 0;
                 var prev = p0;
 
                 for (var i = 1; i <= segments; i++)
@@ -159,19 +176,18 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                                   3 * u * t * t * p2 +
                                   t * t * t * p3;
 
-                    lines.Add(prev);
-                    lines.Add(current);
+                    lines[lineLength++] = prev;
+                    lines[lineLength++] = current;
                     prev = current;
                 }
 
-                Drawer.Lines(lines.AsArray(), color);
+                Drawer.Lines(lines.GetSubArray(0, lineLength), color);
 
-                var dir = math.normalize(p3 - lines[lines.Length - 4]);
+                var dir = math.normalize(p3 - lines[lineLength - 4]);
                 Drawer.Arrow(pos - dir * 0.05f, dir * 0.2f, color);
 
                 var topPos = pos + new float3(0, height + 0.1f, 0);
                 Drawer.Text32(topPos, label, color, 10f);
-                lines.Dispose();
             }
         }
     }

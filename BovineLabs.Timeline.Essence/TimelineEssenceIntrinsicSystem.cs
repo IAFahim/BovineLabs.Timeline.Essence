@@ -15,12 +15,13 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    public partial struct TimelineEssenceIntrinsicSystem : ISystem
-    {
-        private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
-        private NativeList<Entity> uniqueKeys;
-        private ComponentLookup<Targets> targetsLookup;
-        private ComponentLookup<TargetsCustom> customsLookup;
+        public partial struct TimelineEssenceIntrinsicSystem : ISystem
+        {
+            private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
+            private NativeParallelHashSet<Entity> uniqueKeySet;
+            private NativeList<Entity> uniqueKeys;
+            private ComponentLookup<Targets> targetsLookup;
+            private ComponentLookup<TargetsCustom> customsLookup;
         private IntrinsicWriter.Lookup writers;
 
         [BurstCompile]
@@ -28,6 +29,7 @@ namespace BovineLabs.Timeline.Essence
         {
             intrinsicChanges =
                 new NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>(64, Allocator.Persistent);
+            uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             targetsLookup = state.GetComponentLookup<Targets>(true);
             customsLookup = state.GetComponentLookup<TargetsCustom>(true);
@@ -37,6 +39,7 @@ namespace BovineLabs.Timeline.Essence
         public void OnDestroy(ref SystemState state)
         {
             intrinsicChanges.Dispose();
+            uniqueKeySet.Dispose();
             uniqueKeys.Dispose();
         }
 
@@ -46,10 +49,12 @@ namespace BovineLabs.Timeline.Essence
             targetsLookup.Update(ref state);
             customsLookup.Update(ref state);
             writers.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
+            uniqueKeySet.Clear();
 
             state.Dependency = new GatherJob
             {
                 IntrinsicChanges = intrinsicChanges.AsWriter(),
+                UniqueKeys = uniqueKeySet.AsParallelWriter(),
                 TargetsLookup = targetsLookup,
                 CustomsLookup = customsLookup
             }.ScheduleParallel(state.Dependency);
@@ -59,7 +64,7 @@ namespace BovineLabs.Timeline.Essence
             state.Dependency = new GetKeysJob
             {
                 UniqueKeys = uniqueKeys,
-                GroupChanges = reader
+                UniqueKeySet = uniqueKeySet
             }.Schedule(state.Dependency);
 
             state.Dependency = new ApplyJob
@@ -78,6 +83,7 @@ namespace BovineLabs.Timeline.Essence
         private partial struct GatherJob : IJobEntity
         {
             public NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>.ParallelWriter IntrinsicChanges;
+            public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
 
@@ -86,7 +92,11 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Intrinsic.Value == 0 || binding.Value == Entity.Null) return;
 
                 if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
-                        out var target)) IntrinsicChanges.Add(target, new IntrinsicAmount(data.Intrinsic, data.Amount));
+                        out var target))
+                {
+                    IntrinsicChanges.Add(target, new IntrinsicAmount(data.Intrinsic, data.Amount));
+                    UniqueKeys.Add(target);
+                }
             }
         }
 
@@ -94,11 +104,13 @@ namespace BovineLabs.Timeline.Essence
         private struct GetKeysJob : IJob
         {
             public NativeList<Entity> UniqueKeys;
-            [ReadOnly] public NativeParallelMultiHashMap<Entity, IntrinsicAmount>.ReadOnly GroupChanges;
+            [ReadOnly] public NativeParallelHashSet<Entity> UniqueKeySet;
 
             public void Execute()
             {
-                GroupChanges.GetUniqueKeyArray(UniqueKeys);
+                UniqueKeys.Clear();
+                foreach (var key in UniqueKeySet)
+                    UniqueKeys.Add(key);
             }
         }
 
@@ -114,19 +126,38 @@ namespace BovineLabs.Timeline.Essence
                 var key = Keys[index];
                 if (Hint.Unlikely(!Writers.TryGet(key, out var writer))) return;
 
-                var values = new NativeList<IntrinsicAmount>(Allocator.Temp);
-                GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                values.Add(value);
+                var values = new FixedList4096Bytes<IntrinsicAmount>();
 
-                while (GroupChanges.TryGetNextValue(out value, ref it))
+                if (GroupChanges.TryGetFirstValue(key, out var value, out var it))
                 {
-                    var existingIndex = values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
-                    else values.ElementAt(existingIndex).Amount += value.Amount;
+                    AddOrAccumulate(ref values, value, ref writer);
+
+                    while (GroupChanges.TryGetNextValue(out value, ref it))
+                        AddOrAccumulate(ref values, value, ref writer);
                 }
 
                 foreach (var i in values) writer.Add(i.Intrinsic, i.Amount);
-                values.Dispose();
+            }
+
+            private static void AddOrAccumulate(ref FixedList4096Bytes<IntrinsicAmount> values, IntrinsicAmount value,
+                ref IntrinsicWriter writer)
+            {
+                for (var i = 0; i < values.Length; i++)
+                    if (values[i].Intrinsic.Equals(value.Intrinsic))
+                    {
+                        var existing = values[i];
+                        existing.Amount += value.Amount;
+                        values[i] = existing;
+                        return;
+                    }
+
+                if (values.Length < values.Capacity)
+                {
+                    values.Add(value);
+                    return;
+                }
+
+                writer.Add(value.Intrinsic, value.Amount);
             }
         }
 

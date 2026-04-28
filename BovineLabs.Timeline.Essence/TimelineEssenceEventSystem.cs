@@ -15,18 +15,20 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    public partial struct TimelineEssenceEventSystem : ISystem
-    {
-        private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
-        private NativeList<Entity> uniqueKeys;
-        private ComponentLookup<Targets> targetsLookup;
-        private ComponentLookup<TargetsCustom> customsLookup;
+        public partial struct TimelineEssenceEventSystem : ISystem
+        {
+            private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
+            private NativeParallelHashSet<Entity> uniqueKeySet;
+            private NativeList<Entity> uniqueKeys;
+            private ComponentLookup<Targets> targetsLookup;
+            private ComponentLookup<TargetsCustom> customsLookup;
         private ConditionEventWriter.Lookup writers;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
+            uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             targetsLookup = state.GetComponentLookup<Targets>(true);
             customsLookup = state.GetComponentLookup<TargetsCustom>(true);
@@ -36,6 +38,7 @@ namespace BovineLabs.Timeline.Essence
         public void OnDestroy(ref SystemState state)
         {
             eventChanges.Dispose();
+            uniqueKeySet.Dispose();
             uniqueKeys.Dispose();
         }
 
@@ -45,10 +48,12 @@ namespace BovineLabs.Timeline.Essence
             targetsLookup.Update(ref state);
             customsLookup.Update(ref state);
             writers.Update(ref state);
+            uniqueKeySet.Clear();
 
             state.Dependency = new GatherJob
             {
                 EventChanges = eventChanges.AsWriter(),
+                UniqueKeys = uniqueKeySet.AsParallelWriter(),
                 TargetsLookup = targetsLookup,
                 CustomsLookup = customsLookup
             }.ScheduleParallel(state.Dependency);
@@ -58,7 +63,7 @@ namespace BovineLabs.Timeline.Essence
             state.Dependency = new GetKeysJob
             {
                 UniqueKeys = uniqueKeys,
-                GroupChanges = reader
+                UniqueKeySet = uniqueKeySet
             }.Schedule(state.Dependency);
 
             state.Dependency = new ApplyJob
@@ -77,6 +82,7 @@ namespace BovineLabs.Timeline.Essence
         private partial struct GatherJob : IJobEntity
         {
             public NativeParallelMultiHashMapFallback<Entity, EventAmount>.ParallelWriter EventChanges;
+            public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
 
@@ -85,7 +91,11 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
 
                 if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
-                        out var target)) EventChanges.Add(target, new EventAmount(data.Event, data.Value));
+                        out var target))
+                {
+                    EventChanges.Add(target, new EventAmount(data.Event, data.Value));
+                    UniqueKeys.Add(target);
+                }
             }
         }
 
@@ -93,11 +103,13 @@ namespace BovineLabs.Timeline.Essence
         private struct GetKeysJob : IJob
         {
             public NativeList<Entity> UniqueKeys;
-            [ReadOnly] public NativeParallelMultiHashMap<Entity, EventAmount>.ReadOnly GroupChanges;
+            [ReadOnly] public NativeParallelHashSet<Entity> UniqueKeySet;
 
             public void Execute()
             {
-                GroupChanges.GetUniqueKeyArray(UniqueKeys);
+                UniqueKeys.Clear();
+                foreach (var key in UniqueKeySet)
+                    UniqueKeys.Add(key);
             }
         }
 
@@ -113,19 +125,38 @@ namespace BovineLabs.Timeline.Essence
                 var key = Keys[index];
                 if (Hint.Unlikely(!Writers.TryGet(key, out var writer))) return;
 
-                var values = new NativeList<EventAmount>(Allocator.Temp);
-                GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                values.Add(value);
+                var values = new FixedList4096Bytes<EventAmount>();
 
-                while (GroupChanges.TryGetNextValue(out value, ref it))
+                if (GroupChanges.TryGetFirstValue(key, out var value, out var it))
                 {
-                    var existingIndex = values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
-                    else values.ElementAt(existingIndex).Amount += value.Amount;
+                    AddOrAccumulate(ref values, value, ref writer);
+
+                    while (GroupChanges.TryGetNextValue(out value, ref it))
+                        AddOrAccumulate(ref values, value, ref writer);
                 }
 
                 foreach (var e in values) writer.Trigger(e.Event, e.Amount);
-                values.Dispose();
+            }
+
+            private static void AddOrAccumulate(ref FixedList4096Bytes<EventAmount> values, EventAmount value,
+                ref ConditionEventWriter writer)
+            {
+                for (var i = 0; i < values.Length; i++)
+                    if (values[i].Event.Equals(value.Event))
+                    {
+                        var existing = values[i];
+                        existing.Amount += value.Amount;
+                        values[i] = existing;
+                        return;
+                    }
+
+                if (values.Length < values.Capacity)
+                {
+                    values.Add(value);
+                    return;
+                }
+
+                writer.Trigger(value.Event, value.Amount);
             }
         }
 
