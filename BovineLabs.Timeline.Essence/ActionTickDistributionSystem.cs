@@ -191,6 +191,7 @@ namespace BovineLabs.Essence.Actions
             }
         }
 
+        // Intentionally parallel structure to GetKeysJob
         [BurstCompile]
         private struct GetEventKeysJob : IJob
         {
@@ -215,20 +216,33 @@ namespace BovineLabs.Essence.Actions
                 var key = Keys[index];
                 if (Hint.Unlikely(!IntrinsicWriters.TryGet(key, out var intrinsicWriter))) return;
 
-                var values = new NativeList<IntrinsicAmount>(Allocator.Temp);
+                var valueMap = new NativeHashMap<IntrinsicKey, int>(8, Allocator.Temp);
+                var values = new NativeList<IntrinsicAmount>(8, Allocator.Temp);
 
-                GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                values.Add(value);
-
-                while (GroupChanges.TryGetNextValue(out value, ref it))
+                if (GroupChanges.TryGetFirstValue(key, out var value, out var it))
                 {
-                    var existingIndex = values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
-                    else values.ElementAt(existingIndex).Amount += value.Amount;
+                    valueMap.Add(value.Intrinsic, 0);
+                    values.Add(value);
+
+                    while (GroupChanges.TryGetNextValue(out value, ref it))
+                    {
+                        if (valueMap.TryGetValue(value.Intrinsic, out var idx))
+                        {
+                            var v = values[idx];
+                            v.Amount += value.Amount;
+                            values[idx] = v;
+                        }
+                        else
+                        {
+                            valueMap.Add(value.Intrinsic, values.Length);
+                            values.Add(value);
+                        }
+                    }
                 }
 
                 foreach (var i in values) intrinsicWriter.Add(i.Intrinsic, i.Amount);
                 values.Dispose();
+                valueMap.Dispose();
             }
         }
 
@@ -244,20 +258,33 @@ namespace BovineLabs.Essence.Actions
                 var key = Keys[index];
                 if (Hint.Unlikely(!EventWriters.TryGet(key, out var eventWriter))) return;
 
-                var values = new NativeList<EventAmount>(Allocator.Temp);
+                var valueMap = new NativeHashMap<ConditionKey, int>(8, Allocator.Temp);
+                var values = new NativeList<EventAmount>(8, Allocator.Temp);
 
-                GroupChanges.TryGetFirstValue(key, out var value, out var it);
-                values.Add(value);
-
-                while (GroupChanges.TryGetNextValue(out value, ref it))
+                if (GroupChanges.TryGetFirstValue(key, out var value, out var it))
                 {
-                    var existingIndex = values.IndexOf(value);
-                    if (Hint.Unlikely(existingIndex == -1)) values.Add(value);
-                    else values.ElementAt(existingIndex).Amount += value.Amount;
+                    valueMap.Add(value.Event, 0);
+                    values.Add(value);
+
+                    while (GroupChanges.TryGetNextValue(out value, ref it))
+                    {
+                        if (valueMap.TryGetValue(value.Event, out var idx))
+                        {
+                            var v = values[idx];
+                            v.Amount += value.Amount;
+                            values[idx] = v;
+                        }
+                        else
+                        {
+                            valueMap.Add(value.Event, values.Length);
+                            values.Add(value);
+                        }
+                    }
                 }
 
                 foreach (var e in values) eventWriter.Trigger(e.Event, e.Amount);
                 values.Dispose();
+                valueMap.Dispose();
             }
         }
 

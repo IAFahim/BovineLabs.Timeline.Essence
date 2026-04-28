@@ -22,7 +22,7 @@ namespace BovineLabs.Timeline.Essence.Editor
         private static Dictionary<Type, Texture2D> iconCache;
         private static HashSet<string> schemaFolders;
 
-        static SchemaIconPostprocessor() // <-- add this block
+        static SchemaIconPostprocessor()
         {
             iconCache = null;
             schemaFolders = null;
