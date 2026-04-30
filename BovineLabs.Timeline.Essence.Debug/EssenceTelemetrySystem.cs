@@ -3,7 +3,6 @@ using BovineLabs.Core;
 using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Conditions;
-using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -20,7 +19,6 @@ namespace BovineLabs.Essence.Debug
     {
         private EntityQuery telemetryQuery;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             telemetryQuery = SystemAPI.QueryBuilder()
@@ -31,7 +29,6 @@ namespace BovineLabs.Essence.Debug
             state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var renderer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
@@ -46,7 +43,6 @@ namespace BovineLabs.Essence.Debug
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
-        [BurstCompile]
         private struct RenderTelemetryJob : IJobChunk
         {
             public Drawer Renderer;

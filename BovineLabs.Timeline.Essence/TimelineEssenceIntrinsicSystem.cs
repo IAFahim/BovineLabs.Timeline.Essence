@@ -15,13 +15,13 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-        public partial struct TimelineEssenceIntrinsicSystem : ISystem
-        {
-            private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
-            private NativeParallelHashSet<Entity> uniqueKeySet;
-            private NativeList<Entity> uniqueKeys;
-            private ComponentLookup<Targets> targetsLookup;
-            private ComponentLookup<TargetsCustom> customsLookup;
+    public partial struct TimelineEssenceIntrinsicSystem : ISystem
+    {
+        private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
+        private NativeParallelHashSet<Entity> uniqueKeySet;
+        private NativeList<Entity> uniqueKeys;
+        private ComponentLookup<Targets> targetsLookup;
+        private ComponentLookup<TargetsCustom> customsLookup;
         private IntrinsicWriter.Lookup writers;
 
         [BurstCompile]
@@ -31,6 +31,7 @@ namespace BovineLabs.Timeline.Essence
                 new NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>(64, Allocator.Persistent);
             uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
+            state.RequireForUpdate<EssenceConfig>();
             targetsLookup = state.GetComponentLookup<Targets>(true);
             customsLookup = state.GetComponentLookup<TargetsCustom>(true);
             writers.Create(ref state);
