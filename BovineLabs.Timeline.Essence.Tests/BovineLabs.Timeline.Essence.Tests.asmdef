@@ -4,33 +4,33 @@
   "references": [
     "BovineLabs.Core",
     "BovineLabs.Core.Extensions",
+    "BovineLabs.Essence.Data",
     "BovineLabs.Testing",
     "BovineLabs.Timeline.Essence",
     "BovineLabs.Timeline.Essence.Data",
+    "BovineLabs.Reaction.Data",
+    "BovineLabs.Reaction",
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
-    "Unity.Entities.Graphics",
-    "Unity.Entities.Hybrid",
-    "Unity.InputSystem",
     "Unity.Mathematics",
-    "Unity.Mathematics.Extensions",
-    "Unity.PerformanceTesting",
-    "Unity.Physics",
-    "Unity.Transforms"
-  ],
-  "optionalUnityReferences": [
-    "TestAssemblies"
+    "Unity.Transforms",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
   ],
   "includePlatforms": [
     "Editor"
   ],
   "excludePlatforms": [],
   "allowUnsafeCode": true,
-  "overrideReferences": false,
-  "precompiledReferences": [],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
   "autoReferenced": false,
-  "defineConstraints": [],
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }
