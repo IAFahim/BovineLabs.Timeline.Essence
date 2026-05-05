@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     {
         private BlobAssetReference<DistributionCurveBlob> CreateBlob(params float[] cdfValues)
         {
-            var builder = new BlobBuilder(Allocator.Temp);
+            using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<DistributionCurveBlob>();
             var array = builder.Allocate(ref root.Cdf, cdfValues.Length);
 
@@ -69,7 +69,7 @@ namespace BovineLabs.Timeline.Essence.Tests
         public void Evaluate_BetweenSamples_Interpolates()
         {
             using var blob = CreateBlob(0f, 0f, 1f, 1f);
-            var result = blob.Value.Evaluate(0.25f);
+            var result = blob.Value.Evaluate(0.5f);
             Assert.AreEqual(0.5f, result, 0.0001f);
         }
 
