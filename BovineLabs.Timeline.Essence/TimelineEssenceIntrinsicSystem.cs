@@ -1,10 +1,10 @@
 using System;
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.Extensions;
 using BovineLabs.Essence;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
@@ -15,6 +15,7 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     public partial struct TimelineEssenceIntrinsicSystem : ISystem
     {
         private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;

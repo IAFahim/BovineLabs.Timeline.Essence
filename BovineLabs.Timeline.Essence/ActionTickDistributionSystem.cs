@@ -1,6 +1,5 @@
 using System;
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.Extensions;
 using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Data.Actions;
 using BovineLabs.Reaction.Conditions;

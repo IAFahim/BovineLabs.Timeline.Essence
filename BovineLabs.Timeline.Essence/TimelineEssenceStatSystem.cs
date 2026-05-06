@@ -1,6 +1,7 @@
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -10,6 +11,7 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     public partial struct TimelineEssenceStatSystem : ISystem
     {
         [BurstCompile]

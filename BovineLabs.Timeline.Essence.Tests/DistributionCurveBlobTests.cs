@@ -100,6 +100,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             var result = blob.Value.Evaluate(0.5f);
             Assert.AreEqual(0.5f, result, 0.0001f);
         }
+
         [Test]
         public void Evaluate_EmptyCdf_ReturnsZero()
         {

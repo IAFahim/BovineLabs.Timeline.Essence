@@ -1,10 +1,10 @@
 using System;
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.Extensions;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
@@ -15,13 +15,14 @@ using Unity.Jobs;
 namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-        public partial struct TimelineEssenceEventSystem : ISystem
-        {
-            private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
-            private NativeParallelHashSet<Entity> uniqueKeySet;
-            private NativeList<Entity> uniqueKeys;
-            private ComponentLookup<Targets> targetsLookup;
-            private ComponentLookup<TargetsCustom> customsLookup;
+    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
+    public partial struct TimelineEssenceEventSystem : ISystem
+    {
+        private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
+        private NativeParallelHashSet<Entity> uniqueKeySet;
+        private NativeList<Entity> uniqueKeys;
+        private ComponentLookup<Targets> targetsLookup;
+        private ComponentLookup<TargetsCustom> customsLookup;
         private ConditionEventWriter.Lookup writers;
 
         [BurstCompile]
