@@ -31,11 +31,12 @@ namespace BovineLabs.Essence.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            var renderer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
+            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<EssenceTelemetrySystem>();
+            if(!drawer.IsEnabled) return;
 
             state.Dependency = new RenderTelemetryJob
             {
-                Renderer = renderer,
+                Renderer = drawer,
                 TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
                 StatHandle = SystemAPI.GetBufferTypeHandle<Stat>(true),
                 IntrinsicHandle = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),

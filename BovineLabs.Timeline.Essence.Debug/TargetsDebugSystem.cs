@@ -36,7 +36,8 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
             ltwLookup.Update(ref state);
             targetsCustomLookup.Update(ref state);
 
-            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
+            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<TargetsDebugSystem>();
+            if (!drawer.IsEnabled) return;
 
             state.Dependency = new DrawTargetsJob
             {
