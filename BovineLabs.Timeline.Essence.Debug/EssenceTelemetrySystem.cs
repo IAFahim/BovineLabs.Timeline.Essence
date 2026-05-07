@@ -15,15 +15,12 @@ using UnityEngine;
 
 namespace BovineLabs.Essence.Debug
 {
-#if UNITY_EDITOR
     [Configurable]
-#endif
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented",
         Justification = "Using see cref")]
     public static class EssenceTelemetrySystemConfig
     {
-#if UNITY_EDITOR
-        private const string DrawForced = "EssenceTelemetrySystem.force-draw";
+        private const string DrawForced = "essencetelemetrysystem.force-draw";
         private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
 
         [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
@@ -33,7 +30,6 @@ namespace BovineLabs.Essence.Debug
         private struct EssenceTelemetrySystemForced
         {
         }
-#endif
     }
 
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
