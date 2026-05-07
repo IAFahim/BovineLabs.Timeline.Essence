@@ -35,7 +35,6 @@ namespace BovineLabs.Essence.Debug
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
-    [BurstCompile]
     public partial struct EssenceTelemetrySystem : ISystem
     {
         private EntityQuery telemetryQuery;
@@ -47,18 +46,21 @@ namespace BovineLabs.Essence.Debug
                 .WithAll<LocalToWorld>()
                 .WithAny<Stat, Intrinsic, ConditionEvent>()
                 .Build();
+            state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
+            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
+
             Drawer drawer;
             if (!EssenceTelemetrySystemConfig.Enabled.Data)
             {
-                drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<EssenceTelemetrySystem>();
+                drawer = drawSystem.CreateDrawer<EssenceTelemetrySystem>();
                 if (!drawer.IsEnabled) return;
             }
-            else drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
+            else drawer = drawSystem.CreateDrawer();
 
 
             state.Dependency = new RenderTelemetryJob

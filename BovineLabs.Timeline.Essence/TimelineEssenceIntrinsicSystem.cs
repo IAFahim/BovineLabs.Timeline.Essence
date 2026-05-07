@@ -71,7 +71,7 @@ namespace BovineLabs.Timeline.Essence
 
             state.Dependency = new ApplyJob
             {
-                Keys = uniqueKeys,
+                Keys = uniqueKeys.AsDeferredJobArray(),
                 GroupChanges = reader,
                 Writers = writers
             }.Schedule(uniqueKeys, 64, state.Dependency);
@@ -119,7 +119,7 @@ namespace BovineLabs.Timeline.Essence
         [BurstCompile]
         private struct ApplyJob : IJobParallelForDefer
         {
-            [ReadOnly] public NativeList<Entity> Keys;
+            [ReadOnly] public NativeArray<Entity> Keys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, IntrinsicAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public IntrinsicWriter.Lookup Writers;
 

@@ -90,14 +90,14 @@ namespace BovineLabs.Essence.Actions
 
             state.Dependency = new ApplyIntrinsicJob
             {
-                Keys = uniqueKeys,
+                Keys = uniqueKeys.AsDeferredJobArray(),
                 GroupChanges = intrinsicReader,
                 IntrinsicWriters = intrinsicWriters
             }.Schedule(uniqueKeys, 64, state.Dependency);
 
             state.Dependency = new ApplyEventJob
             {
-                Keys = uniqueEventKeys,
+                Keys = uniqueEventKeys.AsDeferredJobArray(),
                 GroupChanges = eventReader,
                 EventWriters = eventWriters
             }.Schedule(uniqueEventKeys, 64, state.Dependency);
@@ -231,7 +231,7 @@ namespace BovineLabs.Essence.Actions
         [BurstCompile]
         private struct ApplyIntrinsicJob : IJobParallelForDefer
         {
-            [ReadOnly] public NativeList<Entity> Keys;
+            [ReadOnly] public NativeArray<Entity> Keys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, IntrinsicAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public IntrinsicWriter.Lookup IntrinsicWriters;
 
@@ -278,7 +278,7 @@ namespace BovineLabs.Essence.Actions
         [BurstCompile]
         private struct ApplyEventJob : IJobParallelForDefer
         {
-            [ReadOnly] public NativeList<Entity> Keys;
+            [ReadOnly] public NativeArray<Entity> Keys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, EventAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup EventWriters;
 
