@@ -1,5 +1,7 @@
 #if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
@@ -14,6 +16,20 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.EntityLinks.Debug
 {
+    [Configurable]
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
+    public static class TargetsDebugSystemConfig
+    {
+        private const string DrawForced = "targetsdebugsystem.force-draw";
+        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+
+        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
+        internal static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<TargetsDebugSystemForced>();
+
+        private struct TargetsDebugSystemForced { }
+    }
+
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
@@ -36,8 +52,13 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
             ltwLookup.Update(ref state);
             targetsCustomLookup.Update(ref state);
 
-            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<TargetsDebugSystem>();
-            if (!drawer.IsEnabled) return;
+            Drawer drawer;
+            if (!TargetsDebugSystemConfig.Enabled.Data)
+            {
+                drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<TargetsDebugSystem>();
+                if (!drawer.IsEnabled) return;
+            }
+            else drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
 
             state.Dependency = new DrawTargetsJob
             {
