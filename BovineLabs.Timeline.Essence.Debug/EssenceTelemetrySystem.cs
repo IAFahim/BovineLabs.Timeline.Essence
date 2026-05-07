@@ -1,8 +1,11 @@
 #if UNITY_EDITOR || BL_DEBUG
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
 using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Conditions;
+using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
@@ -12,27 +15,55 @@ using UnityEngine;
 
 namespace BovineLabs.Essence.Debug
 {
+#if UNITY_EDITOR
+    [Configurable]
+#endif
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented",
+        Justification = "Using see cref")]
+    public static class EssenceTelemetrySystemConfig
+    {
+#if UNITY_EDITOR
+        private const string DrawForced = "EssenceTelemetrySystem.force-draw";
+        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+
+        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
+        internal static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<EssenceTelemetrySystemForced>();
+
+        private struct EssenceTelemetrySystemForced
+        {
+        }
+#endif
+    }
+
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
+    [BurstCompile]
     public partial struct EssenceTelemetrySystem : ISystem
     {
         private EntityQuery telemetryQuery;
 
+        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             telemetryQuery = SystemAPI.QueryBuilder()
                 .WithAll<LocalToWorld>()
                 .WithAny<Stat, Intrinsic, ConditionEvent>()
                 .Build();
-
-            state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<EssenceTelemetrySystem>();
-            if(!drawer.IsEnabled) return;
+            Drawer drawer;
+            if (!EssenceTelemetrySystemConfig.Enabled.Data)
+            {
+                drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<EssenceTelemetrySystem>();
+                if (!drawer.IsEnabled) return;
+            }
+            else drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
+
 
             state.Dependency = new RenderTelemetryJob
             {
