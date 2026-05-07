@@ -157,11 +157,6 @@ namespace BovineLabs.Timeline.Essence.Editor
             if (count > 0)
             {
                 AssetDatabase.SaveAssets();
-                Debug.Log($"[SchemaIconPostprocessor] Patched {count} assets.");
-            }
-            else
-            {
-                Debug.Log("[SchemaIconPostprocessor] All icons already set. No changes.");
             }
         }
 
