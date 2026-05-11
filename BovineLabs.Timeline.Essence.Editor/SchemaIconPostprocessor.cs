@@ -154,10 +154,7 @@ namespace BovineLabs.Timeline.Essence.Editor
                         count++;
             }
 
-            if (count > 0)
-            {
-                AssetDatabase.SaveAssets();
-            }
+            if (count > 0) AssetDatabase.SaveAssets();
         }
 
         private static bool TryApplyIcon(string path)

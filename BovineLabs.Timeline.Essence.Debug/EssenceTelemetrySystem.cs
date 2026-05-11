@@ -60,7 +60,10 @@ namespace BovineLabs.Essence.Debug
                 drawer = drawSystem.CreateDrawer<EssenceTelemetrySystem>();
                 if (!drawer.IsEnabled) return;
             }
-            else drawer = drawSystem.CreateDrawer();
+            else
+            {
+                drawer = drawSystem.CreateDrawer();
+            }
 
 
             state.Dependency = new RenderTelemetryJob
