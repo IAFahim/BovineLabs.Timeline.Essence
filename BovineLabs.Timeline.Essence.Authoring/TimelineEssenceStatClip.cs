@@ -1,6 +1,8 @@
 using BovineLabs.Essence.Authoring;
+using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Entities;
 using UnityEngine.Timeline;
@@ -10,6 +12,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
     public sealed class TimelineEssenceStatClip : DOTSClip, ITimelineClipAsset
     {
         public Target routeTo = Target.Self;
+        public EntityLinkSchema routeLink;
         public StatSchemaObject stat;
         public StatAuthoringType modifyType = StatAuthoringType.Added;
         public float value;
@@ -21,9 +24,12 @@ namespace BovineLabs.Timeline.Essence.Authoring
         {
             if (stat == null) return;
 
+            if (!EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
+
             context.Baker.AddComponent(clipEntity, new TimelineEssenceStatData
             {
                 RouteTo = routeTo,
+                RouteLinkKey = linkKey,
                 Stat = stat.Key,
                 ModifyType = StatAuthoringUtil.GetModifier(modifyType),
                 Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced

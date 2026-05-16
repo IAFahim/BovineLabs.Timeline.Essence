@@ -22,7 +22,8 @@
     "BovineLabs.Essence.Data",
     "BovineLabs.Reaction.Data",
     "Unity.Timeline",
-    "BovineLabs.Timeline.Authoring"
+    "BovineLabs.Timeline.Authoring",
+    "BovineLabs.Timeline.EntityLinks.Authoring"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [],

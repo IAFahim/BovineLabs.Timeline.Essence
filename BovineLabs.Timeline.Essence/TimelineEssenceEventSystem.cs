@@ -1,10 +1,13 @@
 using System;
 using BovineLabs.Core.Collections;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
@@ -23,6 +26,8 @@ namespace BovineLabs.Timeline.Essence
         private NativeList<Entity> uniqueKeys;
         private ComponentLookup<Targets> targetsLookup;
         private ComponentLookup<TargetsCustom> customsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> linkSourcesLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> linksLookup;
         private ConditionEventWriter.Lookup writers;
 
         [BurstCompile]
@@ -33,6 +38,8 @@ namespace BovineLabs.Timeline.Essence
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             targetsLookup = state.GetComponentLookup<Targets>(true);
             customsLookup = state.GetComponentLookup<TargetsCustom>(true);
+            linkSourcesLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            linksLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             writers.Create(ref state);
         }
 
@@ -48,6 +55,8 @@ namespace BovineLabs.Timeline.Essence
         {
             targetsLookup.Update(ref state);
             customsLookup.Update(ref state);
+            linkSourcesLookup.Update(ref state);
+            linksLookup.Update(ref state);
             writers.Update(ref state);
             uniqueKeySet.Clear();
 
@@ -56,7 +65,9 @@ namespace BovineLabs.Timeline.Essence
                 EventChanges = eventChanges.AsWriter(),
                 UniqueKeys = uniqueKeySet.AsParallelWriter(),
                 TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup
+                CustomsLookup = customsLookup,
+                LinkSourcesLookup = linkSourcesLookup,
+                LinksLookup = linksLookup
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = eventChanges.Apply(state.Dependency, out var reader);
@@ -86,13 +97,14 @@ namespace BovineLabs.Timeline.Essence
             public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
+            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSourcesLookup;
+            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> LinksLookup;
 
             private void Execute(in TrackBinding binding, in TimelineEssenceEventData data)
             {
                 if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
-                        out var target))
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, data.RouteLinkKey, binding.Value, TargetsLookup, CustomsLookup, LinkSourcesLookup, LinksLookup, out var target))
                 {
                     EventChanges.Add(target, new EventAmount(data.Event, data.Value));
                     UniqueKeys.Add(target);
