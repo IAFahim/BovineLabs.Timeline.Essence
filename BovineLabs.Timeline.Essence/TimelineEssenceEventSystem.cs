@@ -22,7 +22,6 @@ namespace BovineLabs.Timeline.Essence
         private NativeParallelHashSet<Entity> uniqueKeySet;
         private NativeList<Entity> uniqueKeys;
         private ComponentLookup<Targets> targetsLookup;
-        private ComponentLookup<TargetsCustom> customsLookup;
         private ConditionEventWriter.Lookup writers;
 
         [BurstCompile]
@@ -32,7 +31,6 @@ namespace BovineLabs.Timeline.Essence
             uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             targetsLookup = state.GetComponentLookup<Targets>(true);
-            customsLookup = state.GetComponentLookup<TargetsCustom>(true);
             writers.Create(ref state);
         }
 
@@ -47,7 +45,6 @@ namespace BovineLabs.Timeline.Essence
         public void OnUpdate(ref SystemState state)
         {
             targetsLookup.Update(ref state);
-            customsLookup.Update(ref state);
             writers.Update(ref state);
             uniqueKeySet.Clear();
 
@@ -55,8 +52,7 @@ namespace BovineLabs.Timeline.Essence
             {
                 EventChanges = eventChanges.AsWriter(),
                 UniqueKeys = uniqueKeySet.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup
+                TargetsLookup = targetsLookup
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = eventChanges.Apply(state.Dependency, out var reader);
@@ -85,13 +81,12 @@ namespace BovineLabs.Timeline.Essence
             public NativeParallelMultiHashMapFallback<Entity, EventAmount>.ParallelWriter EventChanges;
             public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
 
             private void Execute(in TrackBinding binding, in TimelineEssenceEventData data)
             {
                 if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
                         out var target))
                 {
                     EventChanges.Add(target, new EventAmount(data.Event, data.Value));

@@ -26,7 +26,6 @@ namespace BovineLabs.Essence.Actions
         private NativeList<Entity> uniqueKeys;
         private NativeList<Entity> uniqueEventKeys;
         private BufferLookup<Stat> statsLookup;
-        private ComponentLookup<TargetsCustom> targetsCustomsLookup;
         private IntrinsicWriter.Lookup intrinsicWriters;
         private ConditionEventWriter.Lookup eventWriters;
 
@@ -42,7 +41,6 @@ namespace BovineLabs.Essence.Actions
             uniqueEventKeys = new NativeList<Entity>(64, Allocator.Persistent);
 
             statsLookup = state.GetBufferLookup<Stat>(true);
-            targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
             intrinsicWriters.Create(ref state);
             eventWriters.Create(ref state);
         }
@@ -61,7 +59,6 @@ namespace BovineLabs.Essence.Actions
         public void OnUpdate(ref SystemState state)
         {
             statsLookup.Update(ref state);
-            targetsCustomsLookup.Update(ref state);
             intrinsicWriters.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
             eventWriters.Update(ref state);
             intrinsicTargets.Clear();
@@ -74,7 +71,6 @@ namespace BovineLabs.Essence.Actions
                 EventChanges = eventChanges.AsWriter(),
                 IntrinsicTargets = intrinsicTargets.AsParallelWriter(),
                 EventTargets = eventTargets.AsParallelWriter(),
-                TargetsCustoms = targetsCustomsLookup,
                 Stats = statsLookup
             }.ScheduleParallel(state.Dependency);
 
@@ -115,7 +111,6 @@ namespace BovineLabs.Essence.Actions
             public NativeParallelMultiHashMapFallback<Entity, EventAmount>.ParallelWriter EventChanges;
             public NativeParallelHashSet<Entity>.ParallelWriter IntrinsicTargets;
             public NativeParallelHashSet<Entity>.ParallelWriter EventTargets;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustoms;
             [ReadOnly] public BufferLookup<Stat> Stats;
 
             private Entity GetTarget(Target target, Entity self, in Targets targets)
@@ -126,12 +121,7 @@ namespace BovineLabs.Essence.Actions
                     Target.Source => targets.Source,
                     Target.Target => targets.Target,
                     Target.Self => self,
-                    Target.Custom0 => TargetsCustoms.TryGetComponent(self, out var tc0)
-                        ? tc0.Target0
-                        : Entity.Null,
-                    Target.Custom1 => TargetsCustoms.TryGetComponent(self, out var tc1)
-                        ? tc1.Target1
-                        : Entity.Null,
+                    Target.Custom => targets.Custom,
                     _ => Entity.Null
                 };
             }

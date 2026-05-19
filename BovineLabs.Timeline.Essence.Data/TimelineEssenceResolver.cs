@@ -11,7 +11,6 @@ namespace BovineLabs.Timeline.Essence.Data
             Target target,
             Entity binding,
             in ComponentLookup<Targets> targets,
-            in ComponentLookup<TargetsCustom> customs,
             out Entity resolved)
         {
             if (target is Target.Self or Target.None)
@@ -22,7 +21,7 @@ namespace BovineLabs.Timeline.Essence.Data
 
             if (targets.TryGetComponent(binding, out var t))
             {
-                resolved = t.Get(target, binding, customs);
+                resolved = t.Get(target, binding);
                 return resolved != Entity.Null;
             }
 

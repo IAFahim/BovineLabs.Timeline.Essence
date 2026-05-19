@@ -21,19 +21,16 @@ namespace BovineLabs.Timeline.Essence
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
             var targetsLookup = SystemAPI.GetComponentLookup<Targets>(true);
-            var customsLookup = SystemAPI.GetComponentLookup<TargetsCustom>(true);
 
             var gatherAddJob = new GatherAddJob
             {
                 Mutations = addStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup
+                TargetsLookup = targetsLookup
             };
             var gatherRemoveJob = new GatherRemoveJob
             {
                 Mutations = removeStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup
+                TargetsLookup = targetsLookup
             };
 
             state.Dependency = JobHandle.CombineDependencies(
@@ -64,13 +61,12 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
                         out var target))
                 {
                     var modifier = new StatModifier { Type = data.Stat, ModifyType = data.ModifyType };
@@ -97,13 +93,12 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup, CustomsLookup,
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
                         out var target)) Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
             }
         }
