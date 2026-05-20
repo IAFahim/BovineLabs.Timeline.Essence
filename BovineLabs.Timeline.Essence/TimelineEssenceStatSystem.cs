@@ -1,10 +1,7 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -24,25 +21,16 @@ namespace BovineLabs.Timeline.Essence
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
             var targetsLookup = SystemAPI.GetComponentLookup<Targets>(true);
-            var customsLookup = SystemAPI.GetComponentLookup<TargetsCustom>(true);
-            var linkSourcesLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
-            var linksLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
 
             var gatherAddJob = new GatherAddJob
             {
                 Mutations = addStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup,
-                LinkSourcesLookup = linkSourcesLookup,
-                LinksLookup = linksLookup
+                TargetsLookup = targetsLookup
             };
             var gatherRemoveJob = new GatherRemoveJob
             {
                 Mutations = removeStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                CustomsLookup = customsLookup,
-                LinkSourcesLookup = linkSourcesLookup,
-                LinksLookup = linksLookup
+                TargetsLookup = targetsLookup
             };
 
             state.Dependency = JobHandle.CombineDependencies(
@@ -73,15 +61,13 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
-            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSourcesLookup;
-            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> LinksLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, data.RouteLinkKey, binding.Value, TargetsLookup, CustomsLookup, LinkSourcesLookup, LinksLookup, out var target))
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
+                        out var target))
                 {
                     var modifier = new StatModifier { Type = data.Stat, ModifyType = data.ModifyType };
 
@@ -107,16 +93,13 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> CustomsLookup;
-            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSourcesLookup;
-            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> LinksLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, data.RouteLinkKey, binding.Value, TargetsLookup, CustomsLookup, LinkSourcesLookup, LinksLookup, out var target))
-                    Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
+                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
+                        out var target)) Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
             }
         }
 

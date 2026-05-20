@@ -39,20 +39,17 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
     public partial struct TargetsDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> ltwLookup;
-        private UnsafeComponentLookup<TargetsCustom> targetsCustomLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            targetsCustomLookup = state.GetUnsafeComponentLookup<TargetsCustom>(true);
             state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             ltwLookup.Update(ref state);
-            targetsCustomLookup.Update(ref state);
 
             if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
             ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
@@ -71,8 +68,7 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
             state.Dependency = new DrawTargetsJob
             {
                 Drawer = drawer,
-                LtwLookup = ltwLookup,
-                TargetsCustomLookup = targetsCustomLookup
+                LtwLookup = ltwLookup
             }.Schedule(state.Dependency);
         }
 
@@ -81,13 +77,11 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
         {
             public Drawer Drawer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
-            [ReadOnly] public UnsafeComponentLookup<TargetsCustom> TargetsCustomLookup;
 
             private static readonly Color ColorOwner = new(0.2f, 0.8f, 1.0f);
             private static readonly Color ColorSource = new(1.0f, 0.6f, 0.1f);
             private static readonly Color ColorTarget = new(1.0f, 0.2f, 0.4f);
-            private static readonly Color ColorCustom0 = new(0.4f, 1.0f, 0.4f);
-            private static readonly Color ColorCustom1 = new(0.8f, 0.3f, 1.0f);
+            private static readonly Color ColorCustom = new(0.4f, 1.0f, 0.4f);
 
             private void Execute(Entity entity, in LocalToWorld ltw, in Targets targets)
             {
@@ -96,12 +90,7 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                 DrawTether(entity, ltw.Position, targets.Owner, "Owner", ColorOwner, 0, ref nullCount);
                 DrawTether(entity, ltw.Position, targets.Source, "Source", ColorSource, 1, ref nullCount);
                 DrawTether(entity, ltw.Position, targets.Target, "Target", ColorTarget, 2, ref nullCount);
-
-                if (TargetsCustomLookup.TryGetComponent(entity, out var custom))
-                {
-                    DrawTether(entity, ltw.Position, custom.Target0, "Custom0", ColorCustom0, 3, ref nullCount);
-                    DrawTether(entity, ltw.Position, custom.Target1, "Custom1", ColorCustom1, 4, ref nullCount);
-                }
+                DrawTether(entity, ltw.Position, targets.Custom, "Custom", ColorCustom, 3, ref nullCount);
             }
 
             private void DrawTether(Entity self, float3 selfPos, Entity target, FixedString32Bytes label, Color color,

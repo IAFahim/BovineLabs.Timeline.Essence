@@ -15,9 +15,7 @@
     "Unity.Physics",
     "Unity.Transforms",
     "BovineLabs.Essence.Data",
-    "BovineLabs.Reaction.Data",
-    "BovineLabs.Timeline.EntityLinks.Data",
-    "BovineLabs.Timeline.EntityLinks"
+    "BovineLabs.Reaction.Data"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [],

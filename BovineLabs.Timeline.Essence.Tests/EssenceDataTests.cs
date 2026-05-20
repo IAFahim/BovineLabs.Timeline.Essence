@@ -76,7 +76,6 @@ namespace BovineLabs.Timeline.Essence.Tests
         {
             var data = default(TimelineEssenceEventData);
             Assert.AreEqual(default(Target), data.RouteTo);
-            Assert.AreEqual(0, data.RouteLinkKey);
             Assert.AreEqual(default(ConditionKey), data.Event);
             Assert.AreEqual(0, data.Value);
         }
@@ -98,7 +97,6 @@ namespace BovineLabs.Timeline.Essence.Tests
         {
             var data = default(TimelineEssenceIntrinsicData);
             Assert.AreEqual(default(Target), data.RouteTo);
-            Assert.AreEqual(0, data.RouteLinkKey);
             Assert.AreEqual(default(IntrinsicKey), data.Intrinsic);
             Assert.AreEqual(0, data.Amount);
         }
@@ -120,7 +118,6 @@ namespace BovineLabs.Timeline.Essence.Tests
         {
             var data = default(TimelineEssenceStatData);
             Assert.AreEqual(default(Target), data.RouteTo);
-            Assert.AreEqual(0, data.RouteLinkKey);
             Assert.AreEqual(default(StatKey), data.Stat);
             Assert.AreEqual(default(StatModifyType), data.ModifyType);
             Assert.AreEqual(0f, data.Value);
@@ -132,13 +129,11 @@ namespace BovineLabs.Timeline.Essence.Tests
             var data = new TimelineEssenceStatData
             {
                 RouteTo = Target.Owner,
-                RouteLinkKey = 1,
                 Stat = new StatKey { Value = 42 },
                 ModifyType = StatModifyType.Added,
                 Value = 3.14f
             };
             Assert.AreEqual(Target.Owner, data.RouteTo);
-            Assert.AreEqual(1, data.RouteLinkKey);
             Assert.AreEqual(42, data.Stat.Value);
             Assert.AreEqual(StatModifyType.Added, data.ModifyType);
             Assert.AreEqual(3.14f, data.Value, 0.0001f);
