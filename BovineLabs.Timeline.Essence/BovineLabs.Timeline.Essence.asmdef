@@ -25,7 +25,8 @@
     "BovineLabs.Essence",
     "BovineLabs.Timeline",
     "BovineLabs.Timeline.Data",
-    "BovineLabs.Timeline.EntityLinks"
+    "BovineLabs.Timeline.EntityLinks",
+    "BovineLabs.Timeline.EntityLinks.Data"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [],

@@ -1,5 +1,8 @@
 using System.Runtime.CompilerServices;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence.Data
@@ -27,6 +30,37 @@ namespace BovineLabs.Timeline.Essence.Data
 
             resolved = Entity.Null;
             return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryResolveLinkedTarget(
+            Target targetMode,
+            ushort linkKey,
+            Entity self,
+            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<EntityLinkSource> sources,
+            in UnsafeBufferLookup<EntityLinkEntry> links,
+            out Entity resolved)
+        {
+            resolved = Entity.Null;
+
+            if (!TryResolveTarget(targetMode, self, targetsLookup, out var target)) 
+                return false;
+
+            if (linkKey == 0)
+            {
+                resolved = target;
+                return true;
+            }
+
+            if (EntityLinkResolver.TryResolve(target, linkKey, sources, links, out var linked))
+            {
+                resolved = linked;
+                return true;
+            }
+
+            resolved = target;
+            return true;
         }
     }
 }

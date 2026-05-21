@@ -8,6 +8,7 @@ namespace BovineLabs.Timeline.Essence.Data
     public struct TimelineEssenceEventData : IComponentData
     {
         public Target RouteTo;
+        public ushort RouteLinkKey;
         public ConditionKey Event;
         public int Value;
     }
@@ -15,6 +16,7 @@ namespace BovineLabs.Timeline.Essence.Data
     public struct TimelineEssenceIntrinsicData : IComponentData
     {
         public Target RouteTo;
+        public ushort RouteLinkKey;
         public IntrinsicKey Intrinsic;
         public int Amount;
     }
@@ -22,6 +24,7 @@ namespace BovineLabs.Timeline.Essence.Data
     public struct TimelineEssenceStatData : IComponentData
     {
         public Target RouteTo;
+        public ushort RouteLinkKey;
         public StatKey Stat;
         public StatModifyType ModifyType;
         public float Value;
