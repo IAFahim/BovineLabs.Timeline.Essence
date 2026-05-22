@@ -24,7 +24,7 @@ namespace BovineLabs.Timeline.Essence
         private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
         private NativeParallelHashSet<Entity> uniqueKeySet;
         private NativeList<Entity> uniqueKeys;
-        
+
         private ComponentLookup<Targets> targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
@@ -38,7 +38,7 @@ namespace BovineLabs.Timeline.Essence
             uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             state.RequireForUpdate<EssenceConfig>();
-            
+
             targetsLookup = state.GetComponentLookup<Targets>(true);
             linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
@@ -95,7 +95,7 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>.ParallelWriter IntrinsicChanges;
             public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
-            
+
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
@@ -104,7 +104,8 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Intrinsic.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value, TargetsLookup, LinkSources, Links, out var target))
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                        TargetsLookup, LinkSources, Links, out var target))
                 {
                     IntrinsicChanges.Add(target, new IntrinsicAmount(data.Intrinsic, data.Amount));
                     UniqueKeys.Add(target);

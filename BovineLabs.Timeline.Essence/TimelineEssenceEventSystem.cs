@@ -24,7 +24,7 @@ namespace BovineLabs.Timeline.Essence
         private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
         private NativeParallelHashSet<Entity> uniqueKeySet;
         private NativeList<Entity> uniqueKeys;
-        
+
         private ComponentLookup<Targets> targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
@@ -92,7 +92,7 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeParallelMultiHashMapFallback<Entity, EventAmount>.ParallelWriter EventChanges;
             public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
-            
+
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
@@ -101,7 +101,8 @@ namespace BovineLabs.Timeline.Essence
             {
                 if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value, TargetsLookup, LinkSources, Links, out var target))
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                        TargetsLookup, LinkSources, Links, out var target))
                 {
                     EventChanges.Add(target, new EventAmount(data.Event, data.Value));
                     UniqueKeys.Add(target);

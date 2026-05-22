@@ -44,7 +44,7 @@ namespace BovineLabs.Timeline.Essence.Data
         {
             resolved = Entity.Null;
 
-            if (!TryResolveTarget(targetMode, self, targetsLookup, out var target)) 
+            if (!TryResolveTarget(targetMode, self, targetsLookup, out var target))
                 return false;
 
             if (linkKey == 0)
