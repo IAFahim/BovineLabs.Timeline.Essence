@@ -46,7 +46,10 @@ namespace BovineLabs.Essence.Debug
                 .WithAll<LocalToWorld>()
                 .WithAny<Stat, Intrinsic, ConditionEvent>()
                 .Build();
+            
             state.RequireForUpdate<DrawSystem.Singleton>();
+
+            state.RequireForUpdate<EssenceDebugNames>(); 
         }
 
         public void OnUpdate(ref SystemState state)
@@ -65,14 +68,14 @@ namespace BovineLabs.Essence.Debug
                 drawer = drawSystem.CreateDrawer();
             }
 
-
             state.Dependency = new RenderTelemetryJob
             {
                 Renderer = drawer,
                 TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
                 StatHandle = SystemAPI.GetBufferTypeHandle<Stat>(true),
                 IntrinsicHandle = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
-                EventHandle = SystemAPI.GetBufferTypeHandle<ConditionEvent>(true)
+                EventHandle = SystemAPI.GetBufferTypeHandle<ConditionEvent>(true),
+                DebugNames = SystemAPI.GetSingleton<EssenceDebugNames>()
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
@@ -83,11 +86,17 @@ namespace BovineLabs.Essence.Debug
             [ReadOnly] public BufferTypeHandle<Stat> StatHandle;
             [ReadOnly] public BufferTypeHandle<Intrinsic> IntrinsicHandle;
             [ReadOnly] public BufferTypeHandle<ConditionEvent> EventHandle;
+            [ReadOnly] public EssenceDebugNames DebugNames;
 
-            private static readonly Color StatTint = new(0.2f, 0.9f, 0.4f, 1f);
-            private static readonly Color IntrinsicTint = new(0.1f, 0.6f, 0.9f, 1f);
-            private static readonly Color EventTint = new(0.9f, 0.4f, 0.2f, 1f);
+            private static readonly Color StatTint = new(0.35f, 0.65f, 0.96f, 1f);
+            private static readonly Color IntrinsicTint = new(0.7f, 0.53f, 1f, 1f);
+            private static readonly Color EventTint = new(0.33f, 0.71f, 0.56f, 1f);
             private static readonly Color HeaderTint = new(1f, 1f, 1f, 0.2f);
+            
+            // --- PADDING SETTINGS ---
+            // The target character length before the value is printed.
+            // Increase this to push the numbers further to the right.
+            private const int TargetNameLength = 24; 
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -118,45 +127,81 @@ namespace BovineLabs.Essence.Debug
 
             private void RenderStats(ref float3 cursor, DynamicBuffer<Stat> buffer)
             {
+                ref var names = ref DebugNames.Value.Value.StatNames;
+                
                 foreach (var kvp in buffer.AsMap())
                 {
-                    var format = new FixedString64Bytes();
-                    format.Append("[STA] ");
-                    format.Append(kvp.Key.Value);
-                    format.Append(" : ");
+                    // Upgraded to 128 to safely hold the extra spaces
+                    var format = new FixedString128Bytes();
+                    
+                    if (names.TryGetValue(kvp.Key.Value, out var namePtr))
+                        format.Append(namePtr.Ref);
+                    else
+                        format.Append(kvp.Key.Value);
+                        
+                    // Add spaces until we hit the target length
+                    int spacesNeeded = math.max(1, TargetNameLength - format.Length);
+                    for (int i = 0; i < spacesNeeded; i++)
+                    {
+                        format.Append(' ');
+                    }
+                        
                     format.Append(kvp.Value.Value);
 
-                    Renderer.Text64(cursor, format, StatTint, 11f);
+                    Renderer.Text128(cursor, format, StatTint, 11f);
                     cursor.y += 0.15f;
                 }
             }
 
             private void RenderIntrinsics(ref float3 cursor, DynamicBuffer<Intrinsic> buffer)
             {
+                ref var names = ref DebugNames.Value.Value.IntrinsicNames;
+                
                 foreach (var kvp in buffer.AsMap())
                 {
-                    var format = new FixedString64Bytes();
-                    format.Append("[INT] ");
-                    format.Append(kvp.Key.Value);
-                    format.Append(" : ");
+                    var format = new FixedString128Bytes();
+                    
+                    if (names.TryGetValue(kvp.Key.Value, out var namePtr))
+                        format.Append(namePtr.Ref);
+                    else
+                        format.Append(kvp.Key.Value);
+                        
+                    int spacesNeeded = math.max(1, TargetNameLength - format.Length);
+                    for (int i = 0; i < spacesNeeded; i++)
+                    {
+                        format.Append(' ');
+                    }
+                        
                     format.Append(kvp.Value);
 
-                    Renderer.Text64(cursor, format, IntrinsicTint, 11f);
+                    Renderer.Text128(cursor, format, IntrinsicTint, 11f);
                     cursor.y += 0.15f;
                 }
             }
 
             private void RenderEvents(ref float3 cursor, DynamicBuffer<ConditionEvent> buffer)
             {
+                ref var names = ref DebugNames.Value.Value.EventNames;
+                
                 foreach (var kvp in buffer.AsMap())
                 {
-                    var format = new FixedString64Bytes();
+                    var format = new FixedString128Bytes();
                     format.Append("[EVT] ");
-                    format.Append(kvp.Key.Value);
-                    format.Append(" : ");
+                    
+                    if (names.TryGetValue(kvp.Key.Value, out var namePtr))
+                        format.Append(namePtr.Ref);
+                    else
+                        format.Append(kvp.Key.Value);
+                        
+                    int spacesNeeded = math.max(1, TargetNameLength - format.Length);
+                    for (int i = 0; i < spacesNeeded; i++)
+                    {
+                        format.Append(' ');
+                    }
+                        
                     format.Append(kvp.Value);
 
-                    Renderer.Text64(cursor, format, EventTint, 11f);
+                    Renderer.Text128(cursor, format, EventTint, 11f);
                     cursor.y += 0.15f;
                 }
             }

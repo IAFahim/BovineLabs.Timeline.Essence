@@ -26,7 +26,10 @@
     "BovineLabs.Reaction.Data",
     "BovineLabs.Essence",
     "BovineLabs.Essence.Data",
-    "BovineLabs.Reaction"
+    "BovineLabs.Reaction",
+    "BovineLabs.Core.Authoring",
+    "BovineLabs.Essence.Authoring",
+    "BovineLabs.Reaction.Authoring"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [],
