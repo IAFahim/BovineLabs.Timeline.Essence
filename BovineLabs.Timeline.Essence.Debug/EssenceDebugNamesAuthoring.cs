@@ -69,7 +69,7 @@ namespace BovineLabs.Essence.Debug
 
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new EssenceDebugNames { Value = blob });
-            blob.Dispose();
+            builder.Dispose();
         }
     }
 }
