@@ -1,10 +1,15 @@
-// BovineLabs.Essence.Debug/EssenceTelemetrySystem.cs
+// BovineLabs.Reaction.Debug/ReactionTelemetrySystem.cs
 #if UNITY_EDITOR || BL_DEBUG
 using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
-using BovineLabs.Essence.Data;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;
+using BovineLabs.Reaction.Conditions;
+using BovineLabs.Reaction.Data.Active;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Groups;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -13,23 +18,87 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-namespace BovineLabs.Essence.Debug
+namespace BovineLabs.Reaction.Debug
 {
     [Configurable]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
-    public static class EssenceTelemetrySystemConfig
+    public static class ReactionTelemetrySystemConfig
     {
-        private const string DrawForced = "essencetelemetrysystem.force-draw";
-        [ConfigVar(DrawForced, false, "Enable the Essence telemetry drawer in the editor.")]
-        internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<EssenceTelemetrySystemForced>();
-        private struct EssenceTelemetrySystemForced { }
+        [ConfigVar("reactiontelemetry.force-draw", false, "Enable the Reaction telemetry drawer.")]
+        internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<EnabledType>();
+
+        // --- Layout Config ---
+        [ConfigVar("reactiontelemetry.offset", 0f, 2.2f, 0f, 0f, "Offset for Reaction Telemetry (Center).")]
+        internal static readonly SharedStatic<Vector4> Offset = SharedStatic<Vector4>.GetOrCreate<OffsetType>();
+
+        [ConfigVar("reactiontelemetry.condition-color", 1f, 0.8f, 0.2f, 1f, "Color for Conditions.")]
+        internal static readonly SharedStatic<Color> ConditionColor = SharedStatic<Color>.GetOrCreate<ConditionColorType>();
+
+        [ConfigVar("reactiontelemetry.event-color", 0.9f, 0.4f, 0.2f, 1f, "Color for Events.")]
+        internal static readonly SharedStatic<Color> EventColor = SharedStatic<Color>.GetOrCreate<EventColorType>();
+
+        private struct EnabledType { }
+        private struct OffsetType { }
+        private struct ConditionColorType { }
+        private struct EventColorType { }
     }
 
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
-                       WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
+    [InternalBufferCapacity(8)]
+    public struct ReactionEventHistoryRecord : IBufferElementData
+    {
+        public ushort Key;
+        public int Value;
+        public double Timestamp;
+    }
+
+    [UpdateInGroup(typeof(ConditionWriteEventsGroup), OrderFirst = true)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
+    [BurstCompile]
+    public partial struct ReactionTelemetryHistorySystem : ISystem
+    {
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            if (!ReactionTelemetrySystemConfig.Enabled.Data && !SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
+            
+            var time = SystemAPI.Time.ElapsedTime;
+            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+
+            foreach (var (events, entity) in SystemAPI.Query<DynamicBuffer<ConditionEvent>>().WithNone<ReactionEventHistoryRecord>().WithEntityAccess())
+            {
+                if (events.Length > 0) ecb.AddBuffer<ReactionEventHistoryRecord>(entity);
+            }
+            
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+
+            foreach (var (events, history) in SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
+            {
+                // Prune events older than 2 seconds to make space
+                for (int i = history.Length - 1; i >= 0; i--)
+                {
+                    if (time - history[i].Timestamp > 2.0) history.RemoveAt(i);
+                }
+
+                if (events.Length == 0) continue;
+
+                foreach(var kvp in events.AsMap())
+                {
+                    // Push newest event to top of stack
+                    history.Insert(0, new ReactionEventHistoryRecord {
+                        Key = kvp.Key.Value,
+                        Value = kvp.Value,
+                        Timestamp = time
+                    });
+                }
+            }
+        }
+    }
+
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
     [BurstCompile]
-    public partial struct EssenceTelemetrySystem : ISystem
+    public partial struct ReactionTelemetrySystem : ISystem
     {
         private EntityQuery telemetryQuery;
 
@@ -38,12 +107,11 @@ namespace BovineLabs.Essence.Debug
         {
             this.telemetryQuery = SystemAPI.QueryBuilder()
                 .WithAll<LocalToWorld>()
-                .WithAny<Stat, Intrinsic>()
+                .WithAny<Active, ConditionActive, ReactionEventHistoryRecord, ConditionValues>()
                 .Build();
             
             state.RequireForUpdate<DrawSystem.Singleton>();
             state.RequireForUpdate<EssenceDebugNames>(); 
-            state.RequireForUpdate<EssenceConfig>(); 
         }
 
         [BurstCompile]
@@ -53,9 +121,9 @@ namespace BovineLabs.Essence.Debug
             ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
 
             Drawer drawer;
-            if (!EssenceTelemetrySystemConfig.Enabled.Data)
+            if (!ReactionTelemetrySystemConfig.Enabled.Data)
             {
-                drawer = drawSystem.CreateDrawer<EssenceTelemetrySystem>();
+                drawer = drawSystem.CreateDrawer<ReactionTelemetrySystem>();
                 if (!drawer.IsEnabled) return;
             }
             else drawer = drawSystem.CreateDrawer();
@@ -64,10 +132,16 @@ namespace BovineLabs.Essence.Debug
             {
                 Renderer = drawer,
                 TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
-                StatHandle = SystemAPI.GetBufferTypeHandle<Stat>(true),
-                IntrinsicHandle = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
+                ActiveHandle = SystemAPI.GetComponentTypeHandle<Active>(true),
+                ConditionActiveHandle = SystemAPI.GetComponentTypeHandle<ConditionActive>(true),
+                ConditionValuesHandle = SystemAPI.GetBufferTypeHandle<ConditionValues>(true),
+                HistoryHandle = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
                 DebugNames = SystemAPI.GetSingleton<EssenceDebugNames>(),
-                Config = SystemAPI.GetSingleton<EssenceConfig>()
+                Time = SystemAPI.Time.ElapsedTime,
+                
+                Offset = ((float4)ReactionTelemetrySystemConfig.Offset.Data).xyz,
+                ConditionColor = ReactionTelemetrySystemConfig.ConditionColor.Data,
+                EventColor = ReactionTelemetrySystemConfig.EventColor.Data
             }.Schedule(this.telemetryQuery, state.Dependency);
         }
 
@@ -76,109 +150,97 @@ namespace BovineLabs.Essence.Debug
         {
             public Drawer Renderer;
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
-            [ReadOnly] public BufferTypeHandle<Stat> StatHandle;
-            [ReadOnly] public BufferTypeHandle<Intrinsic> IntrinsicHandle;
+            [ReadOnly] public ComponentTypeHandle<Active> ActiveHandle;
+            [ReadOnly] public ComponentTypeHandle<ConditionActive> ConditionActiveHandle;
+            [ReadOnly] public BufferTypeHandle<ConditionValues> ConditionValuesHandle;
+            [ReadOnly] public BufferTypeHandle<ReactionEventHistoryRecord> HistoryHandle;
             [ReadOnly] public EssenceDebugNames DebugNames;
-            [ReadOnly] public EssenceConfig Config;
+            public double Time;
 
-            private static readonly Color StatTint = new(0.35f, 0.65f, 0.96f, 1f);
-            private static readonly Color IntrinsicTint = new(0.7f, 0.53f, 1f, 1f);
-            private static readonly Color HeaderTint = new(1f, 1f, 1f, 0.3f);
-            private const int TargetNameLength = 18; 
+            public float3 Offset;
+            public Color ConditionColor;
+            public Color EventColor;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var transforms = chunk.GetNativeArray(ref this.TransformHandle);
-                var statsAccessor = chunk.GetBufferAccessor(ref this.StatHandle);
-                var intrinsicsAccessor = chunk.GetBufferAccessor(ref this.IntrinsicHandle);
+                var hasActive = chunk.Has(ref this.ActiveHandle);
+                var conds = chunk.GetNativeArray(ref this.ConditionActiveHandle);
+                var cvsAccessor = chunk.GetBufferAccessor(ref this.ConditionValuesHandle);
+                var historyAccessor = chunk.GetBufferAccessor(ref this.HistoryHandle);
 
-                var hasStats = statsAccessor.Length > 0;
-                var hasIntrinsics = intrinsicsAccessor.Length > 0;
+                var ColorActive = new Color(0.3f, 0.9f, 0.4f, 1f);
+                var ColorInactive = new Color(0.9f, 0.3f, 0.3f, 1f);
+                var HeaderTint = new Color(1f, 1f, 1f, 0.3f);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
                     var origin = transforms[index].Position;
-                    // Offset slightly to the right so it doesn't overlap with Reaction
-                    var cursor = origin + new float3(0.6f, 2.0f, 0f);
+                    var cursor = origin + this.Offset;
 
                     this.Renderer.Line(origin, cursor, HeaderTint);
-                    this.Renderer.Text32(cursor, "[ ESSENCE ]", HeaderTint, 12f);
+                    this.Renderer.Text32(cursor, "[ REACTION ]", HeaderTint, 12f);
                     cursor.y -= 0.2f;
 
-                    if (hasStats) this.RenderStats(ref cursor, statsAccessor[index]);
-                    if (hasIntrinsics) this.RenderIntrinsics(ref cursor, intrinsicsAccessor[index], hasStats ? statsAccessor[index] : default);
-                }
-            }
-
-            private void RenderStats(ref float3 cursor, DynamicBuffer<Stat> buffer)
-            {
-                ref var names = ref this.DebugNames.Value.Value.StatNames;
-                foreach (var kvp in buffer.AsMap())
-                {
-                    var format = new FixedString128Bytes();
-                    if (names.TryGetValue(kvp.Key.Value, out var namePtr)) format.Append(namePtr.Ref);
-                    else format.Append(kvp.Key.Value);
-                        
-                    this.PadRight(ref format);
-                    
-                    format.Append(kvp.Value.Value);
-                    format.Append(" (A:");
-                    format.Append(kvp.Value.Added);
-                    format.Append(" M:");
-                    format.Append(kvp.Value.Multi);
-                    format.Append(")");
-
-                    this.Renderer.Text128(cursor, format, StatTint, 11f);
-                    cursor.y -= 0.15f;
-                }
-            }
-
-            private void RenderIntrinsics(ref float3 cursor, DynamicBuffer<Intrinsic> buffer, DynamicBuffer<Stat> stats)
-            {
-                ref var names = ref this.DebugNames.Value.Value.IntrinsicNames;
-                ref var configDatas = ref this.Config.Value.Value.IntrinsicDatas;
-
-                foreach (var kvp in buffer.AsMap())
-                {
-                    var format = new FixedString128Bytes();
-                    if (names.TryGetValue(kvp.Key.Value, out var namePtr)) format.Append(namePtr.Ref);
-                    else format.Append(kvp.Key.Value);
-                        
-                    this.PadRight(ref format);
-                    format.Append(kvp.Value);
-
-                    // Show linear bounds if configured
-                    if (configDatas.TryGetValue(kvp.Key, out var cData))
+                    if (hasActive)
                     {
-                        int min = cData.Ref.Min;
-                        int max = cData.Ref.Max;
-
-                        if (stats.IsCreated)
-                        {
-                            var statMap = stats.AsMap();
-                            if (cData.Ref.MinStatKey != 0 && statMap.TryGetValue(cData.Ref.MinStatKey, out var minStat))
-                                min = (int)math.floor(minStat.Value);
-                            if (cData.Ref.MaxStatKey != 0 && statMap.TryGetValue(cData.Ref.MaxStatKey, out var maxStat))
-                                max = (int)math.floor(maxStat.Value);
-                        }
-
-                        format.Append(" [");
-                        format.Append(min);
-                        format.Append(" -> ");
-                        format.Append(max);
-                        format.Append("]");
+                        var mask = chunk.GetEnabledMaskRO(ref this.ActiveHandle);
+                        bool isActive = mask[index];
+                        this.Renderer.Text32(cursor, isActive ? "State: ACTIVE" : "State: INACTIVE", isActive ? ColorActive : ColorInactive, 11f);
+                        cursor.y -= 0.15f;
                     }
 
-                    this.Renderer.Text128(cursor, format, IntrinsicTint, 11f);
-                    cursor.y -= 0.15f;
-                }
-            }
+                    if (conds.Length > 0)
+                    {
+                        this.Renderer.Text64(cursor, $"Mask: {conds[index].Value.HumanizedData}", this.ConditionColor, 11f);
+                        cursor.y -= 0.15f;
+                    }
 
-            private void PadRight(ref FixedString128Bytes str)
-            {
-                int spacesNeeded = math.max(1, TargetNameLength - str.Length);
-                for (int i = 0; i < spacesNeeded; i++) str.Append(' ');
+                    if (cvsAccessor.Length > 0)
+                    {
+                        var cv = cvsAccessor[index];
+                        for (int i = 0; i < cv.Length; i++)
+                        {
+                            if (cv[i].Value != 0) // Only render populated values to avoid noise
+                            {
+                                this.Renderer.Text64(cursor, $"[VAL] Idx {i} : {cv[i].Value}", this.ConditionColor, 11f);
+                                cursor.y -= 0.15f;
+                            }
+                        }
+                    }
+
+                    if (historyAccessor.Length > 0)
+                    {
+                        var evList = historyAccessor[index];
+                        ref var names = ref this.DebugNames.Value.Value.EventNames;
+
+                        // Render top to bottom
+                        for (int i = 0; i < evList.Length; i++)
+                        {
+                            var ev = evList[i];
+                            float age = (float)(this.Time - ev.Timestamp);
+                            
+                            // 1.5s solid, 0.5s fade out
+                            float alpha = math.clamp(1f - (age > 1.5f ? (age - 1.5f) / 0.5f : 0f), 0f, 1f);
+                            Color c = this.EventColor; 
+                            c.a = alpha;
+
+                            var format = new FixedString128Bytes();
+                            format.Append("> ");
+                            if (names.TryGetValue(ev.Key, out var namePtr)) format.Append(namePtr.Ref);
+                            else format.Append(ev.Key);
+                            
+                            int spacesNeeded = math.max(1, 18 - format.Length);
+                            for (int s = 0; s < spacesNeeded; s++) format.Append(' ');
+                                
+                            format.Append(ev.Value);
+
+                            this.Renderer.Text128(cursor, format, c, 11f);
+                            cursor.y -= 0.15f;
+                        }
+                    }
+                }
             }
         }
     }
