@@ -1,4 +1,6 @@
 #if UNITY_EDITOR || BL_DEBUG
+using System;
+using System.Collections.Generic;
 using BovineLabs.Core.Authoring.Settings;
 using BovineLabs.Core.Collections;
 using BovineLabs.Essence.Authoring;
@@ -25,44 +27,18 @@ namespace BovineLabs.Essence.Debug
     {
         public override void Bake(SettingsAuthoring authoring)
         {
-            var essenceSettings = AuthoringSettingsUtility.GetSettings<EssenceSettings>();
-            var reactionSettings = AuthoringSettingsUtility.GetSettings<ReactionSettings>();
+            var essence = AuthoringSettingsUtility.GetSettings<EssenceSettings>();
+            var reaction = AuthoringSettingsUtility.GetSettings<ReactionSettings>();
 
-            DependsOn(essenceSettings);
-            DependsOn(reactionSettings);
+            DependsOn(essence);
+            DependsOn(reaction);
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<EssenceDebugNames.Data>();
 
-            var statBuilder = builder.AllocateHashMap(ref root.StatNames, essenceSettings.StatSchemas.Count);
-            foreach (var stat in essenceSettings.StatSchemas)
-            {
-                if (stat != null)
-                {
-                    DependsOn(stat);
-                    statBuilder.Add(stat.Key, new FixedString32Bytes(stat.name));
-                }
-            }
-
-            var intrinsicBuilder = builder.AllocateHashMap(ref root.IntrinsicNames, essenceSettings.IntrinsicSchemas.Count);
-            foreach (var intrinsic in essenceSettings.IntrinsicSchemas)
-            {
-                if (intrinsic != null)
-                {
-                    DependsOn(intrinsic);
-                    intrinsicBuilder.Add(intrinsic.Key, new FixedString32Bytes(intrinsic.name));
-                }
-            }
-
-            var eventBuilder = builder.AllocateHashMap(ref root.EventNames, reactionSettings.ConditionEvents.Count);
-            foreach (var evt in reactionSettings.ConditionEvents)
-            {
-                if (evt != null)
-                {
-                    DependsOn(evt);
-                    eventBuilder.Add(evt.Key, new FixedString32Bytes(evt.name));
-                }
-            }
+            this.BakeNames(builder, ref root.StatNames, essence.StatSchemas, schema => schema.Key);
+            this.BakeNames(builder, ref root.IntrinsicNames, essence.IntrinsicSchemas, schema => schema.Key);
+            this.BakeNames(builder, ref root.EventNames, reaction.ConditionEvents, schema => schema.Key);
 
             var blob = builder.CreateBlobAssetReference<EssenceDebugNames.Data>(Allocator.Persistent);
             AddBlobAsset(ref blob, out _);
@@ -70,6 +46,22 @@ namespace BovineLabs.Essence.Debug
             var entity = GetEntity(TransformUsageFlags.None);
             AddComponent(entity, new EssenceDebugNames { Value = blob });
             builder.Dispose();
+        }
+
+        private void BakeNames<T>(
+            BlobBuilder builder,
+            ref BlobHashMap<ushort, FixedString32Bytes> map,
+            IReadOnlyList<T> schemas,
+            Func<T, ushort> key)
+            where T : UnityEngine.Object
+        {
+            var hashMap = builder.AllocateHashMap(ref map, schemas.Count);
+            foreach (var schema in schemas)
+            {
+                if (schema == null) continue;
+                DependsOn(schema);
+                hashMap.Add(key(schema), new FixedString32Bytes(schema.name));
+            }
         }
     }
 }
