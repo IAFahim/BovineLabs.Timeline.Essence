@@ -104,6 +104,17 @@ namespace BovineLabs.Essence.Debug
                 Renderer            = drawer,
                 Camera              = drawSystem.CameraCulling,
                 Scale               = EssenceTelemetryConfig.Scale.Data,
+                StatWorldOffset     = ((float4)EssenceTelemetryConfig.StatOffset.Data).xyz,
+                IntrinsicWorldOffset = ((float4)EssenceTelemetryConfig.IntrinsicOffset.Data).xyz,
+                FullDetails         = EssenceTelemetryConfig.FullDetails.Data,
+                LodDistance         = TelemetryLayoutConfig.LodDistance.Data,
+                StatAccent          = EssenceTelemetryConfig.StatColor.Data,
+                StatFilter          = EssenceTelemetryConfig.StatFilter.Data,
+                IntrinsicAccent     = EssenceTelemetryConfig.IntrinsicColor.Data,
+                IntrinsicFilter     = EssenceTelemetryConfig.IntrinsicFilter.Data,
+                VisualOverlay       = TelemetryVisualConfig.VisualOverlay.Data,
+                ShowDots            = TelemetryVisualConfig.ShowDots.Data,
+                BeaconLod           = TelemetryVisualConfig.BeaconLod.Data,
                 TransformHandle     = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
                 StatHandle          = SystemAPI.GetBufferTypeHandle<Stat>(true),
                 IntrinsicHandle     = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
@@ -112,14 +123,6 @@ namespace BovineLabs.Essence.Debug
                 StatModifiersHandle = SystemAPI.GetBufferTypeHandle<StatModifiers>(true),
                 DebugNames          = SystemAPI.GetSingleton<EssenceDebugNames>(),
                 Config              = SystemAPI.GetSingleton<EssenceConfig>(),
-                FullDetails         = EssenceTelemetryConfig.FullDetails.Data,
-                LodDistance         = TelemetryLayoutConfig.LodDistance.Data,
-                StatWorldOffset     = ((float4)EssenceTelemetryConfig.StatOffset.Data).xyz,
-                IntrinsicWorldOffset = ((float4)EssenceTelemetryConfig.IntrinsicOffset.Data).xyz,
-                StatAccent          = EssenceTelemetryConfig.StatColor.Data,
-                StatFilter          = EssenceTelemetryConfig.StatFilter.Data,
-                IntrinsicAccent     = EssenceTelemetryConfig.IntrinsicColor.Data,
-                IntrinsicFilter     = EssenceTelemetryConfig.IntrinsicFilter.Data,
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
@@ -129,6 +132,18 @@ namespace BovineLabs.Essence.Debug
             public Drawer Renderer;
             public CameraCulling Camera;
             public float Scale;
+            public float3 StatWorldOffset;
+            public float3 IntrinsicWorldOffset;
+            public bool FullDetails;
+            public float LodDistance;
+            public Color StatAccent;
+            public FixedString32Bytes StatFilter;
+            public Color IntrinsicAccent;
+            public FixedString32Bytes IntrinsicFilter;
+
+            public bool VisualOverlay;
+            public bool ShowDots;
+            public float BeaconLod;
 
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public BufferTypeHandle<Stat>            StatHandle;
@@ -136,18 +151,8 @@ namespace BovineLabs.Essence.Debug
             [ReadOnly] public BufferTypeHandle<StatTrendSample> TrendHandle;
             [ReadOnly] public ComponentTypeHandle<StatDefaults> StatDefaultsHandle;
             [ReadOnly] public BufferTypeHandle<StatModifiers>   StatModifiersHandle;
-
             [ReadOnly] public EssenceDebugNames                 DebugNames;
             [ReadOnly] public EssenceConfig                     Config;
-
-            public bool FullDetails;
-            public float LodDistance;
-            public float3 StatWorldOffset;
-            public float3 IntrinsicWorldOffset;
-            public Color StatAccent;
-            public FixedString32Bytes StatFilter;
-            public Color IntrinsicAccent;
-            public FixedString32Bytes IntrinsicFilter;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex,
                 bool useEnabledMask, in v128 chunkEnabledMask)
@@ -157,58 +162,85 @@ namespace BovineLabs.Essence.Debug
                 var intrinsics  = chunk.GetBufferAccessor(ref IntrinsicHandle);
                 var trends      = chunk.GetBufferAccessor(ref TrendHandle);
 
-                var hasStats      = stats.Length > 0;
-                var hasIntrinsics = intrinsics.Length > 0;
-                var hasTrends     = trends.Length > 0;
+                var hasStats      = stats.Length      > 0;
+                var hasIntrinsics = intrinsics.Length  > 0;
+                var hasTrends     = trends.Length      > 0;
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
-                    var head = transforms[index].Position;
-                    var baseView = View.WorldFacing(Camera, head, Scale).NudgeWorld(StatWorldOffset);
+                    var head      = transforms[index].Position;
+                    var baseView  = View.WorldFacing(Camera, head, Scale).NudgeWorld(StatWorldOffset);
                     var panelSpacing = TelemetryLayoutConfig.PanelSpacing.Data;
-                    
-                    bool showDetails = FullDetails && baseView.Distance < LodDistance;
+                    var showDetails  = FullDetails && baseView.Distance < LodDistance;
+                    var showDots     = VisualOverlay && ShowDots && showDetails;
+
+                    if (VisualOverlay && baseView.Distance < BeaconLod)
+                    {
+                        var primaryFill = ComputePrimaryFill(
+                            hasIntrinsics ? intrinsics[index] : default,
+                            hasStats      ? stats[index]      : default,
+                            hasIntrinsics);
+                        var beaconGlyphR = TelemetryLayoutConfig.LineHeight.Data * 0.45f;
+                        var beaconView   = hasStats && hasIntrinsics
+                            ? baseView.Shift(-panelSpacing * 0.5f, 0f) : baseView;
+                        VisualGlyph.Beacon(Renderer, beaconView,
+                            -16.0f, -beaconGlyphR, beaconGlyphR,
+                            VisualGlyph.HealthGradient(primaryFill));
+                    }
 
                     if (hasStats)
                     {
-                        var statView = hasIntrinsics ? baseView.Shift(-panelSpacing * 0.5f, 0f) : baseView;
-                        RenderStats(statView, index, chunk, stats[index], hasTrends ? trends[index] : default, showDetails);
+                        var statView = hasIntrinsics
+                            ? baseView.Shift(-panelSpacing * 0.5f, 0f) : baseView;
+                        RenderStats(statView, index, chunk,
+                            stats[index], hasTrends ? trends[index] : default,
+                            showDetails, showDots);
                     }
 
                     if (hasIntrinsics)
                     {
-                        var intrView = View.WorldFacing(Camera, head, Scale).NudgeWorld(IntrinsicWorldOffset);
+                        var intrView = View.WorldFacing(Camera, head, Scale)
+                            .NudgeWorld(IntrinsicWorldOffset);
                         intrView = hasStats ? intrView.Shift(panelSpacing * 0.5f, 0f) : intrView;
-                        RenderIntrinsics(intrView, intrinsics[index], hasStats ? stats[index] : default, showDetails);
+                        RenderIntrinsics(intrView, index, chunk,
+                            intrinsics[index], hasStats ? stats[index] : default,
+                            showDetails, showDots);
                     }
                 }
             }
 
             private void RenderStats(in View v, int entityIndex, in ArchetypeChunk chunk,
-                DynamicBuffer<Stat> buffer, DynamicBuffer<StatTrendSample> trend, bool showDetails)
+                DynamicBuffer<Stat> buffer, DynamicBuffer<StatTrendSample> trend,
+                bool showDetails, bool showDots)
             {
-                var y = 0f;
-                var titleSize = TelemetryLayoutConfig.TitleSize.Data;
-                var fontSize = TelemetryLayoutConfig.FontSize.Data;
-                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
+                var titleSize    = TelemetryLayoutConfig.TitleSize.Data;
+                var fontSize     = TelemetryLayoutConfig.FontSize.Data;
+                var lineHeight   = TelemetryLayoutConfig.LineHeight.Data;
                 var groupSpacing = TelemetryLayoutConfig.GroupSpacing.Data;
-                var indent = TelemetryLayoutConfig.Indent.Data;
+                var indent       = TelemetryLayoutConfig.Indent.Data;
+
+                ref var names    = ref DebugNames.Value.Value.StatNames;
+                var hasDefaults  = chunk.Has(ref StatDefaultsHandle);
+                var hasModifiers = chunk.Has(ref StatModifiersHandle);
+                var defaultsAcc  = hasDefaults  ? chunk.GetNativeArray(ref StatDefaultsHandle) : default;
+                var modifiersAcc = hasModifiers ? chunk.GetBufferAccessor(ref StatModifiersHandle) : default;
+
+                var y = 0f;
 
                 Glyph.Text(Renderer, v, 0f, y, "[ STATS ]", StatAccent, titleSize);
                 y -= lineHeight * (1f + groupSpacing);
-
-                ref var names = ref DebugNames.Value.Value.StatNames;
-                var hasDefaults = chunk.Has(ref StatDefaultsHandle);
-                var hasModifiers = chunk.Has(ref StatModifiersHandle);
-
-                var defaultsAcc = hasDefaults ? chunk.GetNativeArray(ref StatDefaultsHandle) : default;
-                var modifiersAcc = hasModifiers ? chunk.GetBufferAccessor(ref StatModifiersHandle) : default;
 
                 foreach (var stat in buffer.AsMap())
                 {
                     var name = Resolve(ref names, stat.Key.Value);
                     if (Hidden(name, StatFilter)) continue;
+
+                    if (showDots)
+                    {
+                        var fill = StatFill(stat.Key.Value, stat.Value.Value, defaultsAcc, entityIndex, hasDefaults);
+                        VisualGlyph.StatusDot(Renderer, v, -12.0f, y + lineHeight * 0.35f, fill);
+                    }
 
                     var text = new FixedString128Bytes();
                     text.Append("[");
@@ -270,63 +302,34 @@ namespace BovineLabs.Essence.Debug
                 }
             }
 
-            private void FormatModifier(ref FixedString128Bytes str, StatModifier mod)
+            private void RenderIntrinsics(in View v, int entityIndex, in ArchetypeChunk chunk,
+                DynamicBuffer<Intrinsic> buffer, DynamicBuffer<Stat> stats,
+                bool showDetails, bool showDots)
             {
-                switch (mod.ModifyType)
-                {
-                    case StatModifyType.Added:
-                        str.Append(mod.Value >= 0 ? "+" : "");
-                        str.Append(mod.Value);
-                        break;
-                    case StatModifyType.Additive:
-                        str.Append(mod.ValueFloat >= 0 ? "+" : "");
-                        str.Append(mod.ValueFloat * 100f);
-                        str.Append("% (Add)");
-                        break;
-                    case StatModifyType.Multiplicative:
-                        str.Append("x");
-                        str.Append(1f + mod.ValueFloat);
-                        str.Append(" (Mul)");
-                        break;
-                }
-            }
-
-            private float GetTrendDelta(ushort key, DynamicBuffer<StatTrendSample> trend)
-            {
-                if (!trend.IsCreated || trend.Length < 2) return 0f;
-                float last = 0f; float prev = 0f;
-                int count = 0;
-                for (int i = trend.Length - 1; i >= 0; i--)
-                {
-                    if (trend[i].Key == key)
-                    {
-                        if (count == 0) last = trend[i].Value;
-                        else if (count == 1) { prev = trend[i].Value; break; }
-                        count++;
-                    }
-                }
-                return count >= 2 ? (last - prev) : 0f;
-            }
-
-            private void RenderIntrinsics(in View v, DynamicBuffer<Intrinsic> buffer, DynamicBuffer<Stat> stats, bool showDetails)
-            {
-                var y = 0f;
-                var titleSize = TelemetryLayoutConfig.TitleSize.Data;
-                var fontSize = TelemetryLayoutConfig.FontSize.Data;
-                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
+                var titleSize    = TelemetryLayoutConfig.TitleSize.Data;
+                var fontSize     = TelemetryLayoutConfig.FontSize.Data;
+                var lineHeight   = TelemetryLayoutConfig.LineHeight.Data;
                 var groupSpacing = TelemetryLayoutConfig.GroupSpacing.Data;
-                var indent = TelemetryLayoutConfig.Indent.Data;
-
-                Glyph.Text(Renderer, v, 0f, y, "[ INTRINSICS ]", IntrinsicAccent, titleSize);
-                y -= lineHeight * (1f + groupSpacing);
+                var indent       = TelemetryLayoutConfig.Indent.Data;
 
                 ref var names   = ref DebugNames.Value.Value.IntrinsicNames;
                 ref var configs = ref Config.Value.Value.IntrinsicDatas;
+
+                var y = 0f;
+
+                Glyph.Text(Renderer, v, 0f, y, "[ INTRINSICS ]", IntrinsicAccent, titleSize);
+                y -= lineHeight * (1f + groupSpacing);
 
                 foreach (var intrinsic in buffer.AsMap())
                 {
                     var name = Resolve(ref names, intrinsic.Key.Value);
                     if (Hidden(name, IntrinsicFilter)) continue;
+
+                    if (showDots)
+                    {
+                        var fill = IntrinsicFill(intrinsic.Key, intrinsic.Value, stats, ref configs);
+                        VisualGlyph.StatusDot(Renderer, v, -12.0f, y + lineHeight * 0.35f, fill);
+                    }
 
                     var text = new FixedString128Bytes();
 
@@ -375,6 +378,84 @@ namespace BovineLabs.Essence.Debug
 
                     y -= lineHeight * groupSpacing;
                 }
+            }
+
+            private static float StatFill(ushort key, float value,
+                NativeArray<StatDefaults> defaultsAcc, int entityIndex, bool hasDefaults)
+            {
+                if (!hasDefaults || !defaultsAcc.IsCreated) return math.saturate(value / 100f);
+                ref var arr = ref defaultsAcc[entityIndex].Value.Value.Default;
+                for (var i = 0; i < arr.Length; i++)
+                    if (arr[i].Type.Value == key && arr[i].ModifyType == StatModifyType.Added)
+                        return math.saturate(value / math.max(1f, (float)arr[i].Value));
+                return math.saturate(value / 100f);
+            }
+
+            private static float IntrinsicFill(
+                in IntrinsicKey key, int value,
+                DynamicBuffer<Stat> stats,
+                ref BlobHashMap<IntrinsicKey, EssenceConfig.IntrinsicData> configs)
+            {
+                if (!configs.TryGetValue(key, out var data)) return 0.5f;
+                var mn = data.Ref.Min; var mx = data.Ref.Max;
+                if (stats.IsCreated)
+                {
+                    var sm = stats.AsMap();
+                    if (data.Ref.MinStatKey.Value != 0 && sm.TryGetValue(data.Ref.MinStatKey, out var ms))
+                        mn = (int)math.floor(ms.Value);
+                    if (data.Ref.MaxStatKey.Value != 0 && sm.TryGetValue(data.Ref.MaxStatKey, out var xs))
+                        mx = (int)math.floor(xs.Value);
+                }
+                return mx > mn ? math.saturate((float)(value - mn) / (mx - mn)) : 0.5f;
+            }
+
+            private float ComputePrimaryFill(
+                DynamicBuffer<Intrinsic> intrinsics, DynamicBuffer<Stat> stats, bool hasIntr)
+            {
+                if (!hasIntr) return 1f;
+                ref var configs = ref Config.Value.Value.IntrinsicDatas;
+                var minFill = 1f;
+                foreach (var intr in intrinsics.AsMap())
+                {
+                    var f = IntrinsicFill(intr.Key, intr.Value, stats, ref configs);
+                    if (f < minFill) minFill = f;
+                }
+                return minFill;
+            }
+
+            private void FormatModifier(ref FixedString128Bytes str, StatModifier mod)
+            {
+                switch (mod.ModifyType)
+                {
+                    case StatModifyType.Added:
+                        str.Append(mod.Value >= 0 ? "+" : "");
+                        str.Append(mod.Value);
+                        break;
+                    case StatModifyType.Additive:
+                        str.Append(mod.ValueFloat >= 0 ? "+" : "");
+                        str.Append(mod.ValueFloat * 100f);
+                        str.Append("% (Add)");
+                        break;
+                    case StatModifyType.Multiplicative:
+                        str.Append("x");
+                        str.Append(1f + mod.ValueFloat);
+                        str.Append(" (Mul)");
+                        break;
+                }
+            }
+
+            private static float GetTrendDelta(ushort key, DynamicBuffer<StatTrendSample> trend)
+            {
+                if (!trend.IsCreated || trend.Length < 2) return 0f;
+                float last = 0f; float prev = 0f; int count = 0;
+                for (int i = trend.Length - 1; i >= 0; i--)
+                {
+                    if (trend[i].Key != key) continue;
+                    if (count == 0) last = trend[i].Value;
+                    else { prev = trend[i].Value; break; }
+                    count++;
+                }
+                return count >= 2 ? last - prev : 0f;
             }
 
             private static FixedString32Bytes Resolve(ref BlobHashMap<ushort, FixedString32Bytes> names, ushort key)

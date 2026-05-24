@@ -44,12 +44,18 @@ namespace BovineLabs.Reaction.Debug
         internal static readonly SharedStatic<Color> EventColor =
             SharedStatic<Color>.GetOrCreate<EventColorType>();
 
-        private struct EnabledType { }
-        private struct FullDetailsType { }
-        private struct ScaleType { }
-        private struct OffsetType { }
-        private struct ConditionColorType { }
-        private struct EventColorType { }
+        [ConfigVar("reactiontelemetry.visual-active-color", 0.30f, 0.92f, 0.45f, 1f, "Beacon colour when active.")]
+        internal static readonly SharedStatic<Color> VisualActiveColor =
+            SharedStatic<Color>.GetOrCreate<ActiveColorType>();
+
+        [ConfigVar("reactiontelemetry.visual-idle-color", 0.55f, 0.22f, 0.22f, 0.60f, "Beacon colour when idle.")]
+        internal static readonly SharedStatic<Color> VisualIdleColor =
+            SharedStatic<Color>.GetOrCreate<IdleColorType>();
+
+        private struct EnabledType { }    private struct FullDetailsType { }
+        private struct ScaleType { }      private struct OffsetType { }
+        private struct ConditionColorType { } private struct EventColorType { }
+        private struct ActiveColorType { }    private struct IdleColorType { }
     }
 
     [InternalBufferCapacity(8)]
@@ -150,17 +156,27 @@ namespace BovineLabs.Reaction.Debug
                 Renderer              = drawer,
                 Camera                = drawSystem.CameraCulling,
                 Scale                 = ReactionTelemetryConfig.Scale.Data,
+                WorldOffset           = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
+                ConditionAccent       = ReactionTelemetryConfig.ConditionColor.Data,
+                EventAccent           = ReactionTelemetryConfig.EventColor.Data,
+                FullDetails           = ReactionTelemetryConfig.FullDetails.Data,
+                VisualOverlay         = TelemetryVisualConfig.VisualOverlay.Data,
+                BeaconLod             = TelemetryVisualConfig.BeaconLod.Data,
+                VisualActiveColor     = ReactionTelemetryConfig.VisualActiveColor.Data,
+                VisualIdleColor       = ReactionTelemetryConfig.VisualIdleColor.Data,
+                VisualConditionColor  = ReactionTelemetryConfig.ConditionColor.Data,
+                CondBits              = TelemetryVisualConfig.CondBits.Data,
+                RippleMaxR            = TelemetryVisualConfig.RippleMaxR.Data,
+                RippleLife            = TelemetryVisualConfig.RippleLife.Data,
+                RippleOffsetX        = TelemetryVisualConfig.RippleOffsetX.Data,
+                ElapsedTime           = (float)SystemAPI.Time.ElapsedTime,
+                Time                  = SystemAPI.Time.ElapsedTime,
                 TransformHandle       = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
                 ActiveHandle          = SystemAPI.GetComponentTypeHandle<Active>(true),
                 ConditionActiveHandle = SystemAPI.GetComponentTypeHandle<ConditionActive>(true),
                 ConditionValuesHandle = SystemAPI.GetBufferTypeHandle<ConditionValues>(true),
                 HistoryHandle         = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
                 DebugNames            = SystemAPI.GetSingleton<EssenceDebugNames>(),
-                Time                  = SystemAPI.Time.ElapsedTime,
-                FullDetails           = ReactionTelemetryConfig.FullDetails.Data,
-                WorldOffset           = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
-                ConditionAccent       = ReactionTelemetryConfig.ConditionColor.Data,
-                EventAccent           = ReactionTelemetryConfig.EventColor.Data,
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
@@ -170,19 +186,30 @@ namespace BovineLabs.Reaction.Debug
             public Drawer Renderer;
             public CameraCulling Camera;
             public float Scale;
-
-            [ReadOnly] public ComponentTypeHandle<LocalToWorld>      TransformHandle;
-            [ReadOnly] public ComponentTypeHandle<Active>             ActiveHandle;
-            [ReadOnly] public ComponentTypeHandle<ConditionActive>    ConditionActiveHandle;
-            [ReadOnly] public BufferTypeHandle<ConditionValues>       ConditionValuesHandle;
-            [ReadOnly] public BufferTypeHandle<ReactionEventHistoryRecord> HistoryHandle;
-            [ReadOnly] public EssenceDebugNames                       DebugNames;
-            public double Time;
-
-            public bool FullDetails;
             public float3 WorldOffset;
             public Color ConditionAccent;
             public Color EventAccent;
+            public bool FullDetails;
+
+            public bool VisualOverlay;
+            public float BeaconLod;
+            public Color VisualActiveColor;
+            public Color VisualIdleColor;
+            public Color VisualConditionColor;
+            public int CondBits;
+            public float RippleMaxR;
+            public float RippleLife;
+            public float RippleOffsetX;
+            public float ElapsedTime;
+
+            public double Time;
+
+            [ReadOnly] public ComponentTypeHandle<LocalToWorld>              TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<Active>                    ActiveHandle;
+            [ReadOnly] public ComponentTypeHandle<ConditionActive>           ConditionActiveHandle;
+            [ReadOnly] public BufferTypeHandle<ConditionValues>              ConditionValuesHandle;
+            [ReadOnly] public BufferTypeHandle<ReactionEventHistoryRecord>   HistoryHandle;
+            [ReadOnly] public EssenceDebugNames                              DebugNames;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex,
                 bool useEnabledMask, in v128 chunkEnabledMask)
@@ -201,18 +228,68 @@ namespace BovineLabs.Reaction.Debug
                     var head = transforms[index].Position;
                     var v    = View.WorldFacing(Camera, head, Scale).NudgeWorld(WorldOffset);
 
+                    var isActive  = hasActive && activeMask[index];
+                    var condMask  = conditions.IsCreated ? (uint)conditions[index].Value.Data : 0u;
+                    var histBuf   = history.Length > 0  ? history[index] : default;
+                    var valueBuf  = values.Length  > 0  ? values[index]  : default;
+
+                    if (VisualOverlay && v.Distance < BeaconLod)
+                        DrawVisuals(v, hasActive, isActive, conditions.IsCreated, condMask, histBuf, histBuf.IsCreated);
+
                     var y = 0f;
 
-                    if (hasActive)                  y = RenderState(v, y, activeMask[index]);
-                    if (conditions.Length > 0)      y = RenderMask(v, y, conditions[index]);
-                    if (values.Length > 0)          y = RenderValues(v, y, values[index]);
-                    if (history.Length > 0)         y = RenderEvents(v, y, history[index]);
+                    if (hasActive)                 y = RenderState(v, y, isActive);
+                    if (conditions.IsCreated)      y = RenderMask(v, y, conditions[index]);
+                    if (values.Length > 0)         y = RenderValues(v, y, valueBuf);
+                    if (history.Length > 0)        y = RenderEvents(v, y, histBuf);
+                }
+            }
+
+            private void DrawVisuals(in View v, bool hasActive, bool isActive,
+                bool hasConditions, uint condMask,
+                DynamicBuffer<ReactionEventHistoryRecord> history, bool hasHistory)
+            {
+                var lineHeight   = TelemetryLayoutConfig.LineHeight.Data;
+
+                if (hasActive)
+                {
+                    var beaconGlyphR = lineHeight * 0.45f;
+                    var beaconColor  = isActive ? VisualActiveColor : VisualIdleColor;
+                    VisualGlyph.Beacon(Renderer, v, -16.0f, -beaconGlyphR, beaconGlyphR, beaconColor);
+                    if (isActive)
+                        VisualGlyph.BeaconPulse(Renderer, v, -16.0f, -beaconGlyphR,
+                            beaconGlyphR * 1.65f, ElapsedTime, VisualActiveColor);
+                }
+
+                if (hasConditions)
+                {
+                    var condRingGlyphR = lineHeight * 2.5f;
+                    var clearColor = new Color(
+                        VisualConditionColor.r * 0.08f,
+                        VisualConditionColor.g * 0.08f,
+                        VisualConditionColor.b * 0.08f, 0.25f);
+                    VisualGlyph.ConditionRing(Renderer, v,
+                        -16.0f, -(condRingGlyphR + lineHeight * 0.5f),
+                        condRingGlyphR, condMask, CondBits,
+                        VisualConditionColor, clearColor);
+                }
+
+                if (!hasHistory) return;
+                var condRingOffset = hasConditions ? (lineHeight * 2.5f * 2f + lineHeight) : lineHeight * 2f;
+                for (var i = 0; i < history.Length; i++)
+                {
+                    var rec  = history[i];
+                    var age  = ElapsedTime - (float)rec.Timestamp;
+                    var kc   = VisualGlyph.KeyColor(rec.Key, 0.75f, 0.90f);
+                    VisualGlyph.Ripple(Renderer, v,
+                        RippleOffsetX, -condRingOffset,
+                        age, RippleLife, RippleMaxR, kc);
                 }
             }
 
             private float RenderState(in View v, float y, bool active)
             {
-                var titleSize = TelemetryLayoutConfig.TitleSize.Data;
+                var titleSize  = TelemetryLayoutConfig.TitleSize.Data;
                 var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
 
                 var text = new FixedString128Bytes();
@@ -225,12 +302,12 @@ namespace BovineLabs.Reaction.Debug
 
             private float RenderMask(in View v, float y, in ConditionActive condition)
             {
-                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var fontSize   = TelemetryLayoutConfig.FontSize.Data;
                 var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
 
                 var text = new FixedString128Bytes();
                 text.Append("Cond. Mask: ");
-                text.Append(condition.Value.Data); // Exact binary representation
+                text.Append(condition.Value.Data);
 
                 Glyph.Text(Renderer, v, 0f, y, text, ConditionAccent, fontSize);
                 return y - lineHeight;
@@ -240,9 +317,9 @@ namespace BovineLabs.Reaction.Debug
             {
                 if (!FullDetails) return y;
 
-                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var fontSize   = TelemetryLayoutConfig.FontSize.Data;
                 var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
-                var indent = TelemetryLayoutConfig.Indent.Data;
+                var indent     = TelemetryLayoutConfig.Indent.Data;
 
                 for (var i = 0; i < buffer.Length; i++)
                 {
@@ -265,9 +342,9 @@ namespace BovineLabs.Reaction.Debug
             {
                 if (!FullDetails) return y;
 
-                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var fontSize   = TelemetryLayoutConfig.FontSize.Data;
                 var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
-                var indent = TelemetryLayoutConfig.Indent.Data;
+                var indent     = TelemetryLayoutConfig.Indent.Data;
 
                 ref var names = ref DebugNames.Value.Value.EventNames;
 
@@ -278,8 +355,7 @@ namespace BovineLabs.Reaction.Debug
                 {
                     var record = buffer[i];
                     var age    = (float)(Time - record.Timestamp);
-
-                    var fade   = math.saturate(1f - (age * 0.5f));
+                    var fade   = math.saturate(1f - age * 0.5f);
                     var color  = Ink.Dim(EventAccent, fade);
 
                     var text = new FixedString128Bytes();
