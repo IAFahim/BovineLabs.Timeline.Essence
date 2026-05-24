@@ -7,7 +7,6 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Authoring.Core;
 using Unity.Collections;
 using Unity.Entities;
-using UnityEngine;
 
 namespace BovineLabs.Essence.Debug
 {
