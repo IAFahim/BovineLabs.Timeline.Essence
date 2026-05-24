@@ -27,10 +27,13 @@ namespace BovineLabs.Reaction.Debug
         [ConfigVar("reactiontelemetry.force-draw", false, "Enable the Reaction telemetry drawer.")]
         internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<EnabledType>();
 
-        [ConfigVar("reactiontelemetry.scale", 0.05f, "Fixed world-space scale multiplier for the cards.")]
+        [ConfigVar("reactiontelemetry.full-details", true, "Show full details including event history.")]
+        internal static readonly SharedStatic<bool> FullDetails = SharedStatic<bool>.GetOrCreate<FullDetailsType>();
+
+        [ConfigVar("reactiontelemetry.scale", 0.04f, "Fixed world-space scale for the UI.")]
         internal static readonly SharedStatic<float> Scale = SharedStatic<float>.GetOrCreate<ScaleType>();
 
-        [ConfigVar("reactiontelemetry.offset", 0f, 2.4f, 0f, 0f, "World anchor offset for the Reaction card.")]
+        [ConfigVar("reactiontelemetry.offset", 0f, 2.4f, 0f, 0f, "World anchor offset for the Reaction data.")]
         internal static readonly SharedStatic<Vector4> Offset = SharedStatic<Vector4>.GetOrCreate<OffsetType>();
 
         [ConfigVar("reactiontelemetry.condition-color", 1f, 0.8f, 0.2f, 1f, "Accent colour for conditions.")]
@@ -42,6 +45,7 @@ namespace BovineLabs.Reaction.Debug
             SharedStatic<Color>.GetOrCreate<EventColorType>();
 
         private struct EnabledType { }
+        private struct FullDetailsType { }
         private struct ScaleType { }
         private struct OffsetType { }
         private struct ConditionColorType { }
@@ -141,39 +145,28 @@ namespace BovineLabs.Reaction.Debug
                 drawer = drawSystem.CreateDrawer();
             }
 
-            var off = (float4)ReactionTelemetryConfig.Offset.Data;
-
             state.Dependency = new RenderTelemetryJob
             {
-                Renderer          = drawer,
-                Camera            = drawSystem.CameraCulling,
-                Scale             = ReactionTelemetryConfig.Scale.Data,
-                TransformHandle   = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
-                ActiveHandle      = SystemAPI.GetComponentTypeHandle<Active>(true),
+                Renderer              = drawer,
+                Camera                = drawSystem.CameraCulling,
+                Scale                 = ReactionTelemetryConfig.Scale.Data,
+                TransformHandle       = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
+                ActiveHandle          = SystemAPI.GetComponentTypeHandle<Active>(true),
                 ConditionActiveHandle = SystemAPI.GetComponentTypeHandle<ConditionActive>(true),
                 ConditionValuesHandle = SystemAPI.GetBufferTypeHandle<ConditionValues>(true),
-                HistoryHandle     = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
-                DebugNames        = SystemAPI.GetSingleton<EssenceDebugNames>(),
-                Time              = SystemAPI.Time.ElapsedTime,
-                WorldLift         = off.y,
-                ConditionAccent   = ReactionTelemetryConfig.ConditionColor.Data,
-                EventAccent       = ReactionTelemetryConfig.EventColor.Data,
+                HistoryHandle         = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
+                DebugNames            = SystemAPI.GetSingleton<EssenceDebugNames>(),
+                Time                  = SystemAPI.Time.ElapsedTime,
+                FullDetails           = ReactionTelemetryConfig.FullDetails.Data,
+                WorldOffset           = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
+                ConditionAccent       = ReactionTelemetryConfig.ConditionColor.Data,
+                EventAccent           = ReactionTelemetryConfig.EventColor.Data,
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
         [BurstCompile]
         private struct RenderTelemetryJob : IJobChunk
         {
-            private const float SolidSeconds = 1.5f;
-            private const float FadeSeconds  = 0.5f;
-            private const float PulseSeconds = 0.30f;
-
-            private const float PulseX     = -4.3f;
-            private const float StateTextX  = -2.6f;
-            private const float MaskLabelX  = -4.0f;
-            private const float MaskValueX  =  0.8f;
-            private const float IndexLabelX = -4.0f;
-
             public Drawer Renderer;
             public CameraCulling Camera;
             public float Scale;
@@ -186,7 +179,8 @@ namespace BovineLabs.Reaction.Debug
             [ReadOnly] public EssenceDebugNames                       DebugNames;
             public double Time;
 
-            public float WorldLift;
+            public bool FullDetails;
+            public float3 WorldOffset;
             public Color ConditionAccent;
             public Color EventAccent;
 
@@ -205,105 +199,100 @@ namespace BovineLabs.Reaction.Debug
                 while (enumerator.NextEntityIndex(out var index))
                 {
                     var head = transforms[index].Position;
-                    var v    = View.WorldFacing(Camera, head, Scale)
-                                   .NudgeWorld(new float3(0f, WorldLift, 0f));
-                    var pen  = new Pen(0f, Layout.Header, Layout.Leading);
+                    var v    = View.WorldFacing(Camera, head, Scale).NudgeWorld(WorldOffset);
 
-                    Glyph.Title(Renderer, v, "REACTION", Layout.HalfCard, EventAccent);
+                    var y = 0f;
 
-                    if (hasActive)                  RenderState(v, pen.Take(), activeMask[index]);
-                    if (conditions.Length > 0)      RenderMask(v, pen.Take(), conditions[index]);
-                    if (values.Length > 0)          RenderValues(v, ref pen, values[index]);
-                    if (history.Length > 0)         RenderEvents(v, ref pen, history[index]);
-
-                    Glyph.Frame(Renderer, v,
-                        -Layout.HalfCard, Layout.HalfCard,
-                        Layout.Pad, pen.Y - Layout.Pad,
-                        Ink.Frame, EventAccent);
+                    if (hasActive)                  y = RenderState(v, y, activeMask[index]);
+                    if (conditions.Length > 0)      y = RenderMask(v, y, conditions[index]);
+                    if (values.Length > 0)          y = RenderValues(v, y, values[index]);
+                    if (history.Length > 0)         y = RenderEvents(v, y, history[index]);
                 }
             }
 
-            private void RenderState(in View v, float y, bool active)
+            private float RenderState(in View v, float y, bool active)
             {
-                var color  = active ? Ink.Live : Ink.Idle;
-                var radius = active ? 0.30f : 0.20f;
-                Glyph.Pulse(Renderer, v, PulseX, y + 0.12f, radius, color);
+                var titleSize = TelemetryLayoutConfig.TitleSize.Data;
+                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
 
-                var label = new FixedString32Bytes();
-                label.Append(active ? "ACTIVE" : "inactive");
-                Glyph.Label(Renderer, v, StateTextX, y, label, color);
+                var text = new FixedString128Bytes();
+                text.Append(active ? "[ACTIVE] " : "[IDLE] ");
+                text.Append("REACTION");
+
+                Glyph.Text(Renderer, v, 0f, y, text, active ? Ink.Live : Ink.Idle, titleSize);
+                return y - lineHeight;
             }
 
-            private void RenderMask(in View v, float y, in ConditionActive condition)
+            private float RenderMask(in View v, float y, in ConditionActive condition)
             {
-                var ml = new FixedString32Bytes(); ml.Append("mask");
-                Glyph.Label(Renderer, v, MaskLabelX, y, ml, Ink.Muted, Layout.Micro);
+                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
 
-                var mv = new FixedString128Bytes();
-                mv.Append($"{condition.Value.HumanizedData}");
-                Glyph.Text(Renderer, v, MaskValueX, y, mv, ConditionAccent, Layout.Micro);
+                var text = new FixedString128Bytes();
+                text.Append("Cond. Mask: ");
+                text.Append(condition.Value.Data); // Exact binary representation
+
+                Glyph.Text(Renderer, v, 0f, y, text, ConditionAccent, fontSize);
+                return y - lineHeight;
             }
 
-            private void RenderValues(in View v, ref Pen pen, DynamicBuffer<ConditionValues> buffer)
+            private float RenderValues(in View v, float y, DynamicBuffer<ConditionValues> buffer)
             {
-                var peak = 1;
-                for (var i = 0; i < buffer.Length; i++)
-                    peak = math.max(peak, math.abs(buffer[i].Value));
+                if (!FullDetails) return y;
+
+                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
+                var indent = TelemetryLayoutConfig.Indent.Data;
 
                 for (var i = 0; i < buffer.Length; i++)
                 {
                     var raw = buffer[i].Value;
                     if (raw == 0) continue;
 
-                    var y     = pen.Take();
-                    var label = new FixedString32Bytes();
-                    label.Append('['); label.Append(i); label.Append(']');
-                    Glyph.Label(Renderer, v, IndexLabelX, y, label, Ink.Muted, Layout.Micro);
+                    var text = new FixedString128Bytes();
+                    text.Append("-> Cond[");
+                    text.Append(i);
+                    text.Append("]: ");
+                    text.Append(raw);
 
-                    Glyph.Gauge(Renderer, v,
-                        Layout.GaugeX0, Layout.GaugeX1,
-                        y - 0.25f,
-                        raw / (float)peak);
-
-                    var compact = new FixedString128Bytes();
-                    Format.Compact(ref compact, raw);
-                    Glyph.Text(Renderer, v, Layout.ValueX, y, compact, Ink.Value, Layout.Body);
+                    Glyph.Text(Renderer, v, indent, y, text, Ink.Value, fontSize);
+                    y -= lineHeight;
                 }
+                return y;
             }
 
-            private void RenderEvents(in View v, ref Pen pen, DynamicBuffer<ReactionEventHistoryRecord> buffer)
+            private float RenderEvents(in View v, float y, DynamicBuffer<ReactionEventHistoryRecord> buffer)
             {
+                if (!FullDetails) return y;
+
+                var fontSize = TelemetryLayoutConfig.FontSize.Data;
+                var lineHeight = TelemetryLayoutConfig.LineHeight.Data;
+                var indent = TelemetryLayoutConfig.Indent.Data;
+
                 ref var names = ref DebugNames.Value.Value.EventNames;
+
+                Glyph.Text(Renderer, v, 0f, y, "History:", Ink.Label, fontSize);
+                y -= lineHeight;
 
                 for (var i = 0; i < buffer.Length; i++)
                 {
                     var record = buffer[i];
                     var age    = (float)(Time - record.Timestamp);
-                    var fade   = math.saturate(
-                        1f - (age > SolidSeconds ? (age - SolidSeconds) / FadeSeconds : 0f));
+
+                    var fade   = math.saturate(1f - (age * 0.5f));
                     var color  = Ink.Dim(EventAccent, fade);
 
-                    var y = pen.Take();
+                    var text = new FixedString128Bytes();
+                    text.Append("-> [");
+                    if (names.TryGetValue(record.Key, out var named)) text.Append(named.Ref);
+                    else text.Append(record.Key);
+                    text.Append("]: ");
+                    text.Append(record.Value);
 
-                    if (age < PulseSeconds)
-                    {
-                        var pulse = new Color(color.r, color.g, color.b,
-                            (1f - age / PulseSeconds) * color.a);
-                        Glyph.Pulse(Renderer, v,
-                            PulseX, y + 0.12f,
-                            0.15f + age * 0.5f,
-                            pulse);
-                    }
-
-                    var label = new FixedString32Bytes();
-                    if (names.TryGetValue(record.Key, out var named)) label = named.Ref;
-                    else label.Append(record.Key);
-                    Glyph.Label(Renderer, v, MaskLabelX + 0.5f, y, label, color);
-
-                    var compact = new FixedString128Bytes();
-                    Format.Compact(ref compact, record.Value);
-                    Glyph.Text(Renderer, v, Layout.ValueX, y, compact, color, Layout.Body);
+                    Glyph.Text(Renderer, v, indent, y, text, color, fontSize);
+                    y -= lineHeight;
                 }
+                return y;
             }
         }
     }
