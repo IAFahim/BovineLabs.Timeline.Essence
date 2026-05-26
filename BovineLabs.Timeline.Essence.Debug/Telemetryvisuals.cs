@@ -76,12 +76,6 @@ namespace BovineLabs.Essence.Debug
             d.Circle(center, Normal(v) * worldR, new Color(color.r, color.g, color.b, a));
         }
 
-        public static void StatusDot(Drawer d, in View v, float glyphX, float glyphY, float fill)
-        {
-            var size = TelemetryLayoutConfig.LineHeight.Data * 0.14f * v.Unit;
-            d.Point(v.At(glyphX, glyphY), size, HealthGradient(fill));
-        }
-
         public static void ConditionRing(Drawer d, in View v,
             float glyphX, float glyphY, float glyphRadius,
             uint mask, int bits, Color setColor, Color clearColor)
