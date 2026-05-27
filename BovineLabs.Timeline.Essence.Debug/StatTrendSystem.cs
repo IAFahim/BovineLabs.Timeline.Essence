@@ -2,6 +2,7 @@
 using BovineLabs.Core;
 using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
+using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -9,11 +10,13 @@ using Unity.Entities;
 namespace BovineLabs.Essence.Debug
 {
     [InternalBufferCapacity(0)]
-    public struct StatTrendSample : IBufferElementData
+    public struct StatTrendSample : IBufferElementData, ITimestampedRecord
     {
         public ushort Key;
         public float Value;
         public double Timestamp;
+
+        double ITimestampedRecord.Timestamp => Timestamp;
     }
 
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
@@ -53,10 +56,7 @@ namespace BovineLabs.Essence.Debug
 
             foreach (var (stats, trend) in SystemAPI.Query<DynamicBuffer<Stat>, DynamicBuffer<StatTrendSample>>())
             {
-                while (trend.Length > 0 && time - trend[0].Timestamp > RetentionWindow)
-                {
-                    trend.RemoveAt(0);
-                }
+                trend.Cull(time, RetentionWindow);
 
                 foreach (var stat in stats.AsMap())
                 {

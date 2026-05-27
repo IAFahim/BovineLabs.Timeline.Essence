@@ -5,11 +5,13 @@ using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Essence.Debug;
+using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Active;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Groups;
+using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -25,34 +27,43 @@ namespace BovineLabs.Reaction.Debug
         Justification = "Using see cref")]
     public static class ReactionTelemetryConfig
     {
-        [ConfigVar("reaction-telemetry.force-draw", false, "Force-enable the Reaction telemetry drawer.")]
-        internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<K01>();
+        [ConfigVar("reactiontelemetry.draw-enabled", false, "Force-enable the Reaction telemetry drawer.")]
+        public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        [ConfigVar("reaction-telemetry.scale", 0.04f, "Fixed world-space scale for the UI.")]
-        internal static readonly SharedStatic<float> Scale = SharedStatic<float>.GetOrCreate<K02>();
+        [ConfigVar("reactiontelemetry.scale", 0.04f, "Fixed world-space scale for the UI.")]
+        public static readonly SharedStatic<float> Scale = SharedStatic<float>.GetOrCreate<Tags.Scale>();
 
-        [ConfigVar("reaction-telemetry.offset", 0f, 2.4f, 0f, 0f, "World anchor offset for the panel.")]
-        internal static readonly SharedStatic<Vector4> Offset = SharedStatic<Vector4>.GetOrCreate<K03>();
+        [ConfigVar("reactiontelemetry.offset", 0f, 2.4f, 0f, 0f, "World anchor offset for the panel.")]
+        public static readonly SharedStatic<Vector4> Offset = SharedStatic<Vector4>.GetOrCreate<Tags.Offset>();
 
-        [ConfigVar("reaction-telemetry.condition-color", 1f, 0.8f, 0.2f, 1f, "Accent for conditions.")]
-        internal static readonly SharedStatic<Color> ConditionColor = SharedStatic<Color>.GetOrCreate<K04>();
+        [ConfigVar("reactiontelemetry.condition-color", 1f, 0.8f, 0.2f, 1f, "Accent for conditions.")]
+        public static readonly SharedStatic<Color> ConditionColor = SharedStatic<Color>.GetOrCreate<Tags.ConditionColor>();
 
-        [ConfigVar("reaction-telemetry.event-color", 0.95f, 0.5f, 0.3f, 1f, "Accent for events.")]
-        internal static readonly SharedStatic<Color> EventColor = SharedStatic<Color>.GetOrCreate<K05>();
+        [ConfigVar("reactiontelemetry.event-color", 0.95f, 0.5f, 0.3f, 1f, "Accent for events.")]
+        public static readonly SharedStatic<Color> EventColor = SharedStatic<Color>.GetOrCreate<Tags.EventColor>();
 
-        [ConfigVar("reaction-telemetry.cond-bits", 16, "Number of condition bits to display.")]
-        internal static readonly SharedStatic<int> CondBits = SharedStatic<int>.GetOrCreate<K06>();
+        [ConfigVar("reactiontelemetry.cond-bits", 16, "Number of condition bits to display.")]
+        public static readonly SharedStatic<int> CondBits = SharedStatic<int>.GetOrCreate<Tags.CondBits>();
 
-        private struct K01 { } private struct K02 { } private struct K03 { }
-        private struct K04 { } private struct K05 { } private struct K06 { }
+        private struct Tags
+        {
+            public struct Enabled { }
+            public struct Scale { }
+            public struct Offset { }
+            public struct ConditionColor { }
+            public struct EventColor { }
+            public struct CondBits { }
+        }
     }
 
     [InternalBufferCapacity(8)]
-    public struct ReactionEventHistoryRecord : IBufferElementData
+    public struct ReactionEventHistoryRecord : IBufferElementData, ITimestampedRecord
     {
         public ushort Key;
         public int    Value;
         public double Timestamp;
+
+        double ITimestampedRecord.Timestamp => Timestamp;
     }
 
     [UpdateInGroup(typeof(ConditionWriteEventsGroup), OrderFirst = true)]
@@ -86,9 +97,7 @@ namespace BovineLabs.Reaction.Debug
             foreach (var (events, history) in
                 SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
             {
-                for (var i = history.Length - 1; i >= 0; i--)
-                    if (time - history[i].Timestamp > RetentionWindow)
-                        history.RemoveAt(i);
+                history.Cull(time, RetentionWindow);
 
                 if (events.Length == 0) continue;
 
@@ -123,27 +132,15 @@ namespace BovineLabs.Reaction.Debug
             state.RequireForUpdate<EssenceDebugNames>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
-
-            Drawer drawer;
-            if (!ReactionTelemetryConfig.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<ReactionTelemetrySystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<ReactionTelemetrySystem>(ReactionTelemetryConfig.Enabled.Data, out var drawer))
+                return;
 
             state.Dependency = new RenderJob
             {
                 Renderer              = drawer,
-                Camera                = drawSystem.CameraCulling,
+                Camera                = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
                 Scale                 = ReactionTelemetryConfig.Scale.Data,
                 WorldOffset           = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
                 ConditionAccent       = ReactionTelemetryConfig.ConditionColor.Data,
@@ -220,8 +217,8 @@ namespace BovineLabs.Reaction.Debug
                 var accent = isActive ? Ink.Live : Ink.Idle;
 
                 var label = new FixedString128Bytes();
-                label.Append(isActive ? "ACTIVE" : "IDLE");
-                label.Append(" REACTION");
+                if (isActive) { label.Append('A'); label.Append('C'); label.Append('T'); label.Append('I'); label.Append('V'); label.Append('E'); } else { label.Append('I'); label.Append('D'); label.Append('L'); label.Append('E'); }
+                label.Append(' '); label.Append('R'); label.Append('E'); label.Append('A'); label.Append('C'); label.Append('T'); label.Append('I'); label.Append('O'); label.Append('N');
 
                 Glyph.BarRow(Renderer, v, 0f, y, label, fill, accent, TelemetryConfig.TitleSize.Data);
                 return Glyph.AdvanceLine(y);
@@ -233,7 +230,7 @@ namespace BovineLabs.Reaction.Debug
                 var bits = math.min(CondBits, 32);
 
                 var headerLabel = new FixedString128Bytes();
-                headerLabel.Append("Conditions (");
+                headerLabel.Append('C'); headerLabel.Append('o'); headerLabel.Append('n'); headerLabel.Append('d'); headerLabel.Append('i'); headerLabel.Append('t'); headerLabel.Append('i'); headerLabel.Append('o'); headerLabel.Append('n'); headerLabel.Append('s'); headerLabel.Append(' '); headerLabel.Append('(');
                 headerLabel.Append(mask);
                 headerLabel.Append(')');
                 Glyph.TitleRow(Renderer, v, y, headerLabel, ConditionAccent);
@@ -245,9 +242,9 @@ namespace BovineLabs.Reaction.Debug
                     var fill = isSet ? 1f : 0f;
 
                     var bitLabel = new FixedString128Bytes();
-                    bitLabel.Append("Bit ");
+                    bitLabel.Append('B'); bitLabel.Append('i'); bitLabel.Append('t'); bitLabel.Append(' ');
                     bitLabel.Append(i);
-                    bitLabel.Append(isSet ? ": SET" : ": clear");
+                    if (isSet) { bitLabel.Append(':'); bitLabel.Append(' '); bitLabel.Append('S'); bitLabel.Append('E'); bitLabel.Append('T'); } else { bitLabel.Append(':'); bitLabel.Append(' '); bitLabel.Append('c'); bitLabel.Append('l'); bitLabel.Append('e'); bitLabel.Append('a'); bitLabel.Append('r'); }
 
                     Glyph.BarRow(Renderer, v, 0f, y, bitLabel, fill, ConditionAccent, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -268,7 +265,7 @@ namespace BovineLabs.Reaction.Debug
                 if (!anyNonZero) return y;
 
                 var header = new FixedString128Bytes();
-                header.Append("Condition Values");
+                header.Append('C'); header.Append('o'); header.Append('n'); header.Append('d'); header.Append('i'); header.Append('t'); header.Append('i'); header.Append('o'); header.Append('n'); header.Append(' '); header.Append('V'); header.Append('a'); header.Append('l'); header.Append('u'); header.Append('e'); header.Append('s');
                 Glyph.TitleRow(Renderer, v, y, header, ConditionAccent);
                 y = Glyph.AdvanceLine(y);
 
@@ -278,9 +275,9 @@ namespace BovineLabs.Reaction.Debug
                     if (raw == 0) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append("Cond[");
+                    detail.Append('C'); detail.Append('o'); detail.Append('n'); detail.Append('d'); detail.Append('[');
                     detail.Append(i);
-                    detail.Append("]: ");
+                    detail.Append(']'); detail.Append(':'); detail.Append(' ');
                     detail.Append(raw);
 
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
@@ -299,7 +296,7 @@ namespace BovineLabs.Reaction.Debug
                 ref var names = ref DebugNames.Value.Value.EventNames;
 
                 var header = new FixedString128Bytes();
-                header.Append("Event History");
+                header.Append('E'); header.Append('v'); header.Append('e'); header.Append('n'); header.Append('t'); header.Append(' '); header.Append('H'); header.Append('i'); header.Append('s'); header.Append('t'); header.Append('o'); header.Append('r'); header.Append('y');
                 Glyph.TitleRow(Renderer, v, y, header, EventAccent);
                 y = Glyph.AdvanceLine(y);
 
@@ -314,9 +311,9 @@ namespace BovineLabs.Reaction.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(eventName);
-                    label.Append(": ");
+                    label.Append(':'); label.Append(' ');
                     label.Append(record.Value);
-                    label.Append(" (");
+                    label.Append(' '); label.Append('(');
                     AppendAge(ref label, age);
                     label.Append(')');
 
@@ -333,7 +330,7 @@ namespace BovineLabs.Reaction.Debug
                 if (ms < 1000)
                 {
                     str.Append(ms);
-                    str.Append("ms");
+                    str.Append('m'); str.Append('s');
                 }
                 else
                 {

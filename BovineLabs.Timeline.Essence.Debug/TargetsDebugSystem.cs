@@ -4,8 +4,11 @@ using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Debug;
+using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -14,22 +17,23 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-namespace BovineLabs.Timeline.EntityLinks.Debug
+namespace BovineLabs.Essence.Debug
 {
     [Configurable]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented",
         Justification = "Using see cref")]
     public static class TargetsDebugSystemConfig
     {
-        private const string DrawForced = "targetsdebugsystem.force-draw";
-        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+        private const string DrawForced = "targets.draw-enabled";
+        private const string DrawGlobalDescEnabled = "Enable the Targets debug drawer in the editor.";
 
         [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
-        internal static readonly SharedStatic<bool> Enabled =
-            SharedStatic<bool>.GetOrCreate<TargetsDebugSystemForced>();
+        public static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        private struct TargetsDebugSystemForced
+        private struct Tags
         {
+            public struct Enabled { }
         }
     }
 
@@ -38,37 +42,26 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
     [UpdateInGroup(typeof(DebugSystemGroup))]
     public partial struct TargetsDebugSystem : ISystem
     {
-        private UnsafeComponentLookup<LocalToWorld> ltwLookup;
+        private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
-            ltwLookup.Update(ref state);
+            _ltwLookup.Update(ref state);
 
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
-
-            Drawer drawer;
-            if (!TargetsDebugSystemConfig.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<TargetsDebugSystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(TargetsDebugSystemConfig.Enabled.Data, out var drawer))
+                return;
 
             state.Dependency = new DrawTargetsJob
             {
                 Drawer = drawer,
-                LtwLookup = ltwLookup
+                LtwLookup = _ltwLookup
             }.Schedule(state.Dependency);
         }
 
@@ -78,19 +71,23 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
             public Drawer Drawer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
 
-            private static readonly Color ColorOwner = new(0.2f, 0.8f, 1.0f);
-            private static readonly Color ColorSource = new(1.0f, 0.6f, 0.1f);
-            private static readonly Color ColorTarget = new(1.0f, 0.2f, 0.4f);
-            private static readonly Color ColorCustom = new(0.4f, 1.0f, 0.4f);
+            private static readonly Color ColorOwner = TimelineDebugColors.OwnerLink;
+            private static readonly Color ColorSource = TimelineDebugColors.SourceLink;
+            private static readonly Color ColorTarget = TimelineDebugColors.TargetLink;
+            private static readonly Color ColorCustom = TimelineDebugColors.CustomLink;
 
             private void Execute(Entity entity, in LocalToWorld ltw, in Targets targets)
             {
                 var nullCount = 0;
 
-                DrawTether(entity, ltw.Position, targets.Owner, "Owner", ColorOwner, 0, ref nullCount);
-                DrawTether(entity, ltw.Position, targets.Source, "Source", ColorSource, 1, ref nullCount);
-                DrawTether(entity, ltw.Position, targets.Target, "Target", ColorTarget, 2, ref nullCount);
-                DrawTether(entity, ltw.Position, targets.Custom, "Custom", ColorCustom, 3, ref nullCount);
+                var fsOwner = new FixedString32Bytes(); fsOwner.Append('O'); fsOwner.Append('w'); fsOwner.Append('n'); fsOwner.Append('e'); fsOwner.Append('r');
+                DrawTether(entity, ltw.Position, targets.Owner, fsOwner, ColorOwner, 0, ref nullCount);
+                var fsSource = new FixedString32Bytes(); fsSource.Append('S'); fsSource.Append('o'); fsSource.Append('u'); fsSource.Append('r'); fsSource.Append('c'); fsSource.Append('e');
+                DrawTether(entity, ltw.Position, targets.Source, fsSource, ColorSource, 1, ref nullCount);
+                var fsTarget = new FixedString32Bytes(); fsTarget.Append('T'); fsTarget.Append('a'); fsTarget.Append('r'); fsTarget.Append('g'); fsTarget.Append('e'); fsTarget.Append('t');
+                DrawTether(entity, ltw.Position, targets.Target, fsTarget, ColorTarget, 2, ref nullCount);
+                var fsCustom = new FixedString32Bytes(); fsCustom.Append('C'); fsCustom.Append('u'); fsCustom.Append('s'); fsCustom.Append('t'); fsCustom.Append('o'); fsCustom.Append('m');
+                DrawTether(entity, ltw.Position, targets.Custom, fsCustom, ColorCustom, 3, ref nullCount);
             }
 
             private void DrawTether(Entity self, float3 selfPos, Entity target, FixedString32Bytes label, Color color,
@@ -101,7 +98,11 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                     var dimColor = color;
                     dimColor.a = 0.4f;
                     var nullPos = selfPos + new float3(0, 0.8f + nullCount * 0.25f, 0);
-                    Drawer.Text32(nullPos, $"[No {label}]", dimColor, 10f);
+                    var msg = new FixedString32Bytes();
+                    msg.Append('['); msg.Append('N'); msg.Append('o'); msg.Append(' ');
+                    msg.Append(label);
+                    msg.Append(']');
+                    Drawer.Text32(nullPos, msg, dimColor, 10f);
                     nullCount++;
                     return;
                 }
@@ -109,7 +110,11 @@ namespace BovineLabs.Timeline.EntityLinks.Debug
                 if (!LtwLookup.TryGetComponent(target, out var targetLtw))
                 {
                     var errPos = selfPos + new float3(0, 0.8f + nullCount * 0.25f, 0);
-                    Drawer.Text32(errPos, $"[{label} has no Transform]", Color.red, 10f);
+                    var msg = new FixedString32Bytes();
+                    msg.Append('[');
+                    msg.Append(label);
+                    msg.Append(' '); msg.Append('h'); msg.Append('a'); msg.Append('s'); msg.Append(' '); msg.Append('n'); msg.Append('o'); msg.Append(' '); msg.Append('T'); msg.Append('r'); msg.Append('a'); msg.Append('n'); msg.Append('s'); msg.Append('f'); msg.Append('o'); msg.Append('r'); msg.Append('m'); msg.Append(']');
+                    Drawer.Text32(errPos, msg, TimelineDebugColors.Error, 10f);
                     nullCount++;
                     return;
                 }

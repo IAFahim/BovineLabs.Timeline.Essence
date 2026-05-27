@@ -5,6 +5,7 @@ using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
+using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -20,34 +21,43 @@ namespace BovineLabs.Essence.Debug
         Justification = "Using see cref")]
     public static class EssenceTelemetryConfig
     {
-        [ConfigVar("essence-telemetry.force-draw", false, "Force-enable the Essence telemetry drawer.")]
-        internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<K01>();
+        [ConfigVar("essencetelemetry.draw-enabled", false, "Force-enable the Essence telemetry drawer.")]
+        public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        [ConfigVar("essence-telemetry.scale", 0.04f, "Fixed world-space scale for the UI.")]
-        internal static readonly SharedStatic<float> Scale = SharedStatic<float>.GetOrCreate<K02>();
+        [ConfigVar("essencetelemetry.scale", 0.04f, "Fixed world-space scale for the UI.")]
+        public static readonly SharedStatic<float> Scale = SharedStatic<float>.GetOrCreate<Tags.Scale>();
 
-        [ConfigVar("essence-telemetry.stat-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the stats panel.")]
-        internal static readonly SharedStatic<Vector4> StatOffset = SharedStatic<Vector4>.GetOrCreate<K03>();
+        [ConfigVar("essencetelemetry.stat-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the stats panel.")]
+        public static readonly SharedStatic<Vector4> StatOffset = SharedStatic<Vector4>.GetOrCreate<Tags.StatOffset>();
 
-        [ConfigVar("essence-telemetry.intrinsic-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the intrinsics panel.")]
-        internal static readonly SharedStatic<Vector4> IntrinsicOffset = SharedStatic<Vector4>.GetOrCreate<K04>();
+        [ConfigVar("essencetelemetry.intrinsic-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the intrinsics panel.")]
+        public static readonly SharedStatic<Vector4> IntrinsicOffset = SharedStatic<Vector4>.GetOrCreate<Tags.IntrinsicOffset>();
 
-        [ConfigVar("essence-telemetry.stat-color", 0.42f, 0.68f, 0.98f, 1f, "Accent for stats.")]
-        internal static readonly SharedStatic<Color> StatColor = SharedStatic<Color>.GetOrCreate<K05>();
+        [ConfigVar("essencetelemetry.stat-color", 0.42f, 0.68f, 0.98f, 1f, "Accent for stats.")]
+        public static readonly SharedStatic<Color> StatColor = SharedStatic<Color>.GetOrCreate<Tags.StatColor>();
 
-        [ConfigVar("essence-telemetry.intrinsic-color", 0.74f, 0.56f, 1f, 1f, "Accent for intrinsics.")]
-        internal static readonly SharedStatic<Color> IntrinsicColor = SharedStatic<Color>.GetOrCreate<K06>();
+        [ConfigVar("essencetelemetry.intrinsic-color", 0.74f, 0.56f, 1f, 1f, "Accent for intrinsics.")]
+        public static readonly SharedStatic<Color> IntrinsicColor = SharedStatic<Color>.GetOrCreate<Tags.IntrinsicColor>();
 
-        [ConfigVar("essence-telemetry.stat-filter", "", "Filter stats by name prefix.")]
-        internal static readonly SharedStatic<FixedString32Bytes> StatFilter =
-            SharedStatic<FixedString32Bytes>.GetOrCreate<K07>();
+        [ConfigVar("essencetelemetry.stat-filter", "", "Filter stats by name prefix.")]
+        public static readonly SharedStatic<FixedString32Bytes> StatFilter =
+            SharedStatic<FixedString32Bytes>.GetOrCreate<Tags.StatFilter>();
 
-        [ConfigVar("essence-telemetry.intrinsic-filter", "", "Filter intrinsics by name prefix.")]
-        internal static readonly SharedStatic<FixedString32Bytes> IntrinsicFilter =
-            SharedStatic<FixedString32Bytes>.GetOrCreate<K08>();
+        [ConfigVar("essencetelemetry.intrinsic-filter", "", "Filter intrinsics by name prefix.")]
+        public static readonly SharedStatic<FixedString32Bytes> IntrinsicFilter =
+            SharedStatic<FixedString32Bytes>.GetOrCreate<Tags.IntrinsicFilter>();
 
-        private struct K01 { } private struct K02 { } private struct K03 { } private struct K04 { }
-        private struct K05 { } private struct K06 { } private struct K07 { } private struct K08 { }
+        private struct Tags
+        {
+            public struct Enabled { }
+            public struct Scale { }
+            public struct StatOffset { }
+            public struct IntrinsicOffset { }
+            public struct StatColor { }
+            public struct IntrinsicColor { }
+            public struct StatFilter { }
+            public struct IntrinsicFilter { }
+        }
     }
 
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
@@ -71,27 +81,15 @@ namespace BovineLabs.Essence.Debug
             state.RequireForUpdate<EssenceConfig>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
-
-            Drawer drawer;
-            if (!EssenceTelemetryConfig.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<EssenceTelemetrySystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<EssenceTelemetrySystem>(EssenceTelemetryConfig.Enabled.Data, out var drawer))
+                return;
 
             state.Dependency = new RenderJob
             {
                 Renderer             = drawer,
-                Camera               = drawSystem.CameraCulling,
+                Camera               = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
                 Scale                = EssenceTelemetryConfig.Scale.Data,
                 StatWorldOffset      = ((float4)EssenceTelemetryConfig.StatOffset.Data).xyz,
                 IntrinsicWorldOffset = ((float4)EssenceTelemetryConfig.IntrinsicOffset.Data).xyz,
@@ -192,7 +190,7 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append("STATS");
+                title.Append('S'); title.Append('T'); title.Append('A'); title.Append('T'); title.Append('S');
                 Glyph.TitleRow(Renderer, v, y, title, StatAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -207,7 +205,7 @@ namespace BovineLabs.Essence.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(": ");
+                    label.Append(':'); label.Append(' ');
                     label.Append(stat.Value.Value);
                     AppendTrendDelta(ref label, stat.Key.Value, trends);
 
@@ -233,7 +231,7 @@ namespace BovineLabs.Essence.Debug
                     if (baseArray[i].Type.Value != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append("Base: ");
+                    detail.Append('B'); detail.Append('a'); detail.Append('s'); detail.Append('e'); detail.Append(':'); detail.Append(' ');
                     FormatModifier(ref detail, baseArray[i]);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -249,9 +247,9 @@ namespace BovineLabs.Essence.Debug
                     if (mods[i].Value.Type.Value != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append("Mod: ");
+                    detail.Append('M'); detail.Append('o'); detail.Append('d'); detail.Append(':'); detail.Append(' ');
                     FormatModifier(ref detail, mods[i].Value);
-                    detail.Append(" Src:");
+                    detail.Append(' '); detail.Append('S'); detail.Append('r'); detail.Append('c'); detail.Append(':');
                     detail.Append(mods[i].SourceEntity.Index);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -269,7 +267,7 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append("INTRINSICS");
+                title.Append('I'); title.Append('N'); title.Append('T'); title.Append('R'); title.Append('I'); title.Append('N'); title.Append('S'); title.Append('I'); title.Append('C'); title.Append('S');
                 Glyph.TitleRow(Renderer, v, y, title, IntrinsicAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -288,16 +286,16 @@ namespace BovineLabs.Essence.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(": ");
+                    label.Append(':'); label.Append(' ');
                     label.Append(intrinsic.Value);
 
                     if (resolved.Range > 0)
                     {
-                        label.Append(" [");
+                        label.Append(' '); label.Append('[');
                         label.Append(resolved.Min);
-                        label.Append("..");
+                        label.Append('.'); label.Append('.');
                         label.Append(resolved.Max);
-                        label.Append("]");
+                        label.Append(']');
                     }
 
                     Glyph.BarRow(Renderer, v, 0f, y, label, fill, IntrinsicAccent, fontSize);
@@ -306,11 +304,11 @@ namespace BovineLabs.Essence.Debug
                     if (resolved.HasStatBounds)
                     {
                         var detail = new FixedString128Bytes();
-                        detail.Append("Min: ");
+                        detail.Append('M'); detail.Append('i'); detail.Append('n'); detail.Append(':'); detail.Append(' ');
                         detail.Append(resolved.Min);
-                        detail.Append(" | Max: ");
+                        detail.Append(' '); detail.Append('|'); detail.Append(' '); detail.Append('M'); detail.Append('a'); detail.Append('x'); detail.Append(':'); detail.Append(' ');
                         detail.Append(resolved.Max);
-                        detail.Append(" (stat-driven)");
+                        detail.Append(' '); detail.Append('('); detail.Append('s'); detail.Append('t'); detail.Append('a'); detail.Append('t'); detail.Append('-'); detail.Append('d'); detail.Append('r'); detail.Append('i'); detail.Append('v'); detail.Append('e'); detail.Append('n'); detail.Append(')');
                         Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                         y = Glyph.AdvanceLine(y);
                     }
@@ -402,7 +400,7 @@ namespace BovineLabs.Essence.Debug
                 var delta = last - prev;
                 if (math.abs(delta) <= 0.001f) return;
 
-                label.Append(delta > 0 ? " (+" : " (");
+                label.Append(' '); label.Append('('); if (delta > 0) label.Append('+');
                 label.Append(delta);
                 label.Append(')');
             }
@@ -418,12 +416,12 @@ namespace BovineLabs.Essence.Debug
                     case StatModifyType.Additive:
                         if (mod.ValueFloat >= 0) str.Append('+');
                         str.Append(mod.ValueFloat * 100f);
-                        str.Append("% Add");
+                        str.Append('%'); str.Append(' '); str.Append('A'); str.Append('d'); str.Append('d');
                         break;
                     case StatModifyType.Multiplicative:
                         str.Append('x');
                         str.Append(1f + mod.ValueFloat);
-                        str.Append(" Mul");
+                        str.Append(' '); str.Append('M'); str.Append('u'); str.Append('l');
                         break;
                 }
             }
