@@ -19,6 +19,7 @@ namespace BovineLabs.Timeline.Essence
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
+    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceEventSystem : ISystem
     {
         private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;

@@ -17,6 +17,7 @@ using Unity.Mathematics;
 namespace BovineLabs.Essence.Actions
 {
     [UpdateInGroup(typeof(ActiveEnabledSystemGroup))]
+    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct ActionTickDistributionSystem : ISystem
     {
         private NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount> intrinsicChanges;
