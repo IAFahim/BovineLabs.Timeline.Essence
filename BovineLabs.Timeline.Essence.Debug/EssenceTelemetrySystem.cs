@@ -47,6 +47,9 @@ namespace BovineLabs.Essence.Debug
         public static readonly SharedStatic<FixedString32Bytes> IntrinsicFilter =
             SharedStatic<FixedString32Bytes>.GetOrCreate<Tags.IntrinsicFilter>();
 
+        [ConfigVar("essencetelemetry.bars", true, "Show bars in telemetry debug.")]
+        public static readonly SharedStatic<bool> Bars = SharedStatic<bool>.GetOrCreate<Tags.Bars>();
+
         private struct Tags
         {
             public struct Enabled { }
@@ -57,6 +60,7 @@ namespace BovineLabs.Essence.Debug
             public struct IntrinsicColor { }
             public struct StatFilter { }
             public struct IntrinsicFilter { }
+            public struct Bars { }
         }
     }
 
@@ -97,6 +101,7 @@ namespace BovineLabs.Essence.Debug
                 StatFilter           = EssenceTelemetryConfig.StatFilter.Data,
                 IntrinsicAccent      = EssenceTelemetryConfig.IntrinsicColor.Data,
                 IntrinsicFilter      = EssenceTelemetryConfig.IntrinsicFilter.Data,
+                ShowBars             = EssenceTelemetryConfig.Bars.Data,
                 PanelSpacing         = TelemetryConfig.PanelSpacing.Data,
                 UseLogFill           = TelemetryConfig.LogFill.Data,
                 TransformHandle      = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
@@ -121,6 +126,7 @@ namespace BovineLabs.Essence.Debug
             public float PanelSpacing;
             public Color StatAccent;
             public FixedString32Bytes StatFilter;
+            public bool ShowBars;
             public Color IntrinsicAccent;
             public FixedString32Bytes IntrinsicFilter;
             public bool UseLogFill;
@@ -200,8 +206,10 @@ namespace BovineLabs.Essence.Debug
                     var name = ResolveName(ref names, stat.Key.Value);
                     if (IsFiltered(name, StatFilter)) continue;
 
-                    var fill = ComputeStatFill(stat.Key.Value, stat.Value.Value,
-                        defaultsArr, entityIndex, hasDefaults, UseLogFill);
+                    var fill = ShowBars
+                        ? ComputeStatFill(stat.Key.Value, stat.Value.Value,
+                            defaultsArr, entityIndex, hasDefaults, UseLogFill)
+                        : 0f;
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
@@ -209,7 +217,10 @@ namespace BovineLabs.Essence.Debug
                     label.Append(stat.Value.Value);
                     AppendTrendDelta(ref label, stat.Key.Value, trends);
 
-                    Glyph.BarRow(Renderer, v, 0f, y, label, fill, StatAccent, fontSize);
+                    if (ShowBars)
+                        Glyph.BarRow(Renderer, v, 0f, y, label, fill, StatAccent, fontSize);
+                    else
+                        Glyph.Text(Renderer, v, 0f, y, label, Ink.Value, fontSize);
                     y = Glyph.AdvanceLine(y);
 
                     if (hasDefaults)
@@ -298,7 +309,10 @@ namespace BovineLabs.Essence.Debug
                         label.Append(']');
                     }
 
-                    Glyph.BarRow(Renderer, v, 0f, y, label, fill, IntrinsicAccent, fontSize);
+                    if (ShowBars)
+                        Glyph.BarRow(Renderer, v, 0f, y, label, fill, IntrinsicAccent, fontSize);
+                    else
+                        Glyph.Text(Renderer, v, 0f, y, label, Ink.Value, fontSize);
                     y = Glyph.AdvanceLine(y);
 
                     if (resolved.HasStatBounds)
