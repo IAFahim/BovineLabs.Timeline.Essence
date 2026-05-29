@@ -68,7 +68,7 @@ namespace BovineLabs.Reaction.Debug
 
     [UpdateInGroup(typeof(ConditionWriteEventsGroup), OrderFirst = true)]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
-                       WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
+                       WorldSystemFilterFlags.ClientSimulation)]
     [BurstCompile]
     public partial struct ReactionTelemetryHistorySystem : ISystem
     {
