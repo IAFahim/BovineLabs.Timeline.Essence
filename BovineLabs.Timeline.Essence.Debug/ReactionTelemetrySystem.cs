@@ -134,7 +134,7 @@ namespace BovineLabs.Reaction.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!TimelineDebugUtility.TryGetDrawer<ReactionTelemetrySystem>(ReactionTelemetryConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<ReactionTelemetrySystem>(ref state, ReactionTelemetryConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new RenderJob
@@ -148,6 +148,8 @@ namespace BovineLabs.Reaction.Debug
                 CondBits              = ReactionTelemetryConfig.CondBits.Data,
                 Time                  = SystemAPI.Time.ElapsedTime,
                 TransformHandle       = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
+                LocalTransformHandle  = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle          = SystemAPI.GetComponentTypeHandle<Parent>(true),
                 ActiveHandle          = SystemAPI.GetComponentTypeHandle<Active>(true),
                 ConditionActiveHandle = SystemAPI.GetComponentTypeHandle<ConditionActive>(true),
                 ConditionValuesHandle = SystemAPI.GetBufferTypeHandle<ConditionValues>(true),
@@ -169,6 +171,9 @@ namespace BovineLabs.Reaction.Debug
             public double Time;
 
             [ReadOnly] public ComponentTypeHandle<LocalToWorld>            TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
+            [ReadOnly] public ComponentTypeHandle<Parent> ParentHandle;
+
             [ReadOnly] public ComponentTypeHandle<Active>                  ActiveHandle;
             [ReadOnly] public ComponentTypeHandle<ConditionActive>         ConditionActiveHandle;
             [ReadOnly] public BufferTypeHandle<ConditionValues>            ConditionValuesHandle;
@@ -179,6 +184,9 @@ namespace BovineLabs.Reaction.Debug
                 bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var transforms = chunk.GetNativeArray(ref TransformHandle);
+                var hasLocalTransform = chunk.Has(ref LocalTransformHandle);
+                var hasParent = chunk.Has(ref ParentHandle);
+                var localTransforms = hasLocalTransform ? chunk.GetNativeArray(ref LocalTransformHandle) : default;
                 var conditions = chunk.GetNativeArray(ref ConditionActiveHandle);
                 var valuesAcc = chunk.GetBufferAccessor(ref ConditionValuesHandle);
                 var historyAcc = chunk.GetBufferAccessor(ref HistoryHandle);
@@ -192,7 +200,7 @@ namespace BovineLabs.Reaction.Debug
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
-                    var head = transforms[index].Position;
+                    var head = (hasLocalTransform && !hasParent) ? localTransforms[index].Position : transforms[index].Position;
                     var v = View.WorldFacing(Camera, head, Scale).NudgeWorld(WorldOffset);
 
                     var y = 0f;

@@ -43,25 +43,33 @@ namespace BovineLabs.Essence.Debug
     public partial struct TargetsDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
+        private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
+        private UnsafeComponentLookup<Parent> _parentLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetUnsafeComponentLookup<Parent>(true);
             state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             _ltwLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
 
-            if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(TargetsDebugSystemConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(ref state, TargetsDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawTargetsJob
             {
                 Drawer = drawer,
-                LtwLookup = _ltwLookup
+                LtwLookup = _ltwLookup,
+                LocalTransformLookup = _localTransformLookup,
+                ParentLookup = _parentLookup
             }.Schedule(state.Dependency);
         }
 
@@ -70,6 +78,18 @@ namespace BovineLabs.Essence.Debug
         {
             public Drawer Drawer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<Parent> ParentLookup;
+
+            private float3 GetAntiJitterPosition(Entity e, float3 fallback)
+            {
+                if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
+                {
+                    return LocalTransformLookup[e].Position;
+                }
+                return fallback;
+            }
+
 
             private static readonly Color ColorOwner = TimelineDebugColors.OwnerLink;
             private static readonly Color ColorSource = TimelineDebugColors.SourceLink;
@@ -81,13 +101,13 @@ namespace BovineLabs.Essence.Debug
                 var nullCount = 0;
 
                 var fsOwner = new FixedString32Bytes(); fsOwner.Append('O'); fsOwner.Append('w'); fsOwner.Append('n'); fsOwner.Append('e'); fsOwner.Append('r');
-                DrawTether(entity, ltw.Position, targets.Owner, fsOwner, ColorOwner, 0, ref nullCount);
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Owner, fsOwner, ColorOwner, 0, ref nullCount);
                 var fsSource = new FixedString32Bytes(); fsSource.Append('S'); fsSource.Append('o'); fsSource.Append('u'); fsSource.Append('r'); fsSource.Append('c'); fsSource.Append('e');
-                DrawTether(entity, ltw.Position, targets.Source, fsSource, ColorSource, 1, ref nullCount);
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Source, fsSource, ColorSource, 1, ref nullCount);
                 var fsTarget = new FixedString32Bytes(); fsTarget.Append('T'); fsTarget.Append('a'); fsTarget.Append('r'); fsTarget.Append('g'); fsTarget.Append('e'); fsTarget.Append('t');
-                DrawTether(entity, ltw.Position, targets.Target, fsTarget, ColorTarget, 2, ref nullCount);
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Target, fsTarget, ColorTarget, 2, ref nullCount);
                 var fsCustom = new FixedString32Bytes(); fsCustom.Append('C'); fsCustom.Append('u'); fsCustom.Append('s'); fsCustom.Append('t'); fsCustom.Append('o'); fsCustom.Append('m');
-                DrawTether(entity, ltw.Position, targets.Custom, fsCustom, ColorCustom, 3, ref nullCount);
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Custom, fsCustom, ColorCustom, 3, ref nullCount);
             }
 
             private void DrawTether(Entity self, float3 selfPos, Entity target, FixedString32Bytes label, Color color,
@@ -119,7 +139,7 @@ namespace BovineLabs.Essence.Debug
                     return;
                 }
 
-                var targetPos = targetLtw.Position;
+                var targetPos = GetAntiJitterPosition(target, targetLtw.Position);
 
                 if (self == target || math.all(selfPos == targetPos))
                 {

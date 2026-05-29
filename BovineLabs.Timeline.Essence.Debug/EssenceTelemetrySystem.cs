@@ -87,7 +87,7 @@ namespace BovineLabs.Essence.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!TimelineDebugUtility.TryGetDrawer<EssenceTelemetrySystem>(EssenceTelemetryConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<EssenceTelemetrySystem>(ref state, EssenceTelemetryConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new RenderJob
@@ -105,6 +105,8 @@ namespace BovineLabs.Essence.Debug
                 PanelSpacing         = TelemetryConfig.PanelSpacing.Data,
                 UseLogFill           = TelemetryConfig.LogFill.Data,
                 TransformHandle      = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
+                LocalTransformHandle  = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle          = SystemAPI.GetComponentTypeHandle<Parent>(true),
                 StatHandle           = SystemAPI.GetBufferTypeHandle<Stat>(true),
                 IntrinsicHandle      = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
                 TrendHandle          = SystemAPI.GetBufferTypeHandle<StatTrendSample>(true),
@@ -132,6 +134,9 @@ namespace BovineLabs.Essence.Debug
             public bool UseLogFill;
 
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
+            [ReadOnly] public ComponentTypeHandle<Parent> ParentHandle;
+
             [ReadOnly] public BufferTypeHandle<Stat>            StatHandle;
             [ReadOnly] public BufferTypeHandle<Intrinsic>       IntrinsicHandle;
             [ReadOnly] public BufferTypeHandle<StatTrendSample> TrendHandle;
@@ -144,6 +149,9 @@ namespace BovineLabs.Essence.Debug
                 bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 var transforms = chunk.GetNativeArray(ref TransformHandle);
+                var hasLocalTransform = chunk.Has(ref LocalTransformHandle);
+                var hasParent = chunk.Has(ref ParentHandle);
+                var localTransforms = hasLocalTransform ? chunk.GetNativeArray(ref LocalTransformHandle) : default;
                 var statBuffers = chunk.GetBufferAccessor(ref StatHandle);
                 var intrinsicBuffers = chunk.GetBufferAccessor(ref IntrinsicHandle);
                 var trendBuffers = chunk.GetBufferAccessor(ref TrendHandle);
@@ -156,7 +164,7 @@ namespace BovineLabs.Essence.Debug
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
-                    var head = transforms[index].Position;
+                    var head = (hasLocalTransform && !hasParent) ? localTransforms[index].Position : transforms[index].Position;
 
                     if (hasStats)
                     {
