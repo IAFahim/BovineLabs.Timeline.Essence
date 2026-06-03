@@ -26,7 +26,7 @@ namespace BovineLabs.Timeline.Essence
         private NativeParallelHashSet<Entity> uniqueKeySet;
         private NativeList<Entity> uniqueKeys;
 
-        private ComponentLookup<Targets> targetsLookup;
+        private UnsafeComponentLookup<Targets> targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
         private IntrinsicWriter.Lookup writers;
@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Essence
             uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             state.RequireForUpdate<EssenceConfig>();
 
-            targetsLookup = state.GetComponentLookup<Targets>(true);
+            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             writers.Create(ref state);
@@ -97,7 +97,7 @@ namespace BovineLabs.Timeline.Essence
             public NativeParallelMultiHashMapFallback<Entity, IntrinsicAmount>.ParallelWriter IntrinsicChanges;
             public NativeParallelHashSet<Entity>.ParallelWriter UniqueKeys;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
 

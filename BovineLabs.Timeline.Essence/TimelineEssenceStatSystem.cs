@@ -1,3 +1,5 @@
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
@@ -21,7 +23,7 @@ namespace BovineLabs.Timeline.Essence
             var addStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
-            var targetsLookup = SystemAPI.GetComponentLookup<Targets>(true);
+            var targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
 
             var gatherAddJob = new GatherAddJob
             {
@@ -61,7 +63,7 @@ namespace BovineLabs.Timeline.Essence
         private partial struct GatherAddJob : IJobEntity
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {
@@ -93,7 +95,7 @@ namespace BovineLabs.Timeline.Essence
         private partial struct GatherRemoveJob : IJobEntity
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
             {

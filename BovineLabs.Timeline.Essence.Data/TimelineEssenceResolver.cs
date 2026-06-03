@@ -13,7 +13,7 @@ namespace BovineLabs.Timeline.Essence.Data
         public static bool TryResolveTarget(
             Target target,
             Entity binding,
-            in ComponentLookup<Targets> targets,
+            in UnsafeComponentLookup<Targets> targets,
             out Entity resolved)
         {
             if (target is Target.Self or Target.None)
@@ -37,7 +37,7 @@ namespace BovineLabs.Timeline.Essence.Data
             Target targetMode,
             ushort linkKey,
             Entity self,
-            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<Targets> targetsLookup,
             in UnsafeComponentLookup<EntityLinkSource> sources,
             in UnsafeBufferLookup<EntityLinkEntry> links,
             out Entity resolved)
