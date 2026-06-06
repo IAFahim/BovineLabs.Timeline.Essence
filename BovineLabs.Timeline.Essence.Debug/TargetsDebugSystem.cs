@@ -4,11 +4,9 @@ using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
-using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -33,7 +31,9 @@ namespace BovineLabs.Essence.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
+            public struct Enabled
+            {
+            }
         }
     }
 
@@ -61,7 +61,8 @@ namespace BovineLabs.Essence.Debug
             _localTransformLookup.Update(ref state);
             _parentLookup.Update(ref state);
 
-            if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(ref state, TargetsDebugSystemConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(ref state, TargetsDebugSystemConfig.Enabled.Data,
+                    out var drawer))
                 return;
 
             state.Dependency = new DrawTargetsJob
@@ -84,9 +85,7 @@ namespace BovineLabs.Essence.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
@@ -100,14 +99,41 @@ namespace BovineLabs.Essence.Debug
             {
                 var nullCount = 0;
 
-                var fsOwner = new FixedString32Bytes(); fsOwner.Append('O'); fsOwner.Append('w'); fsOwner.Append('n'); fsOwner.Append('e'); fsOwner.Append('r');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Owner, fsOwner, ColorOwner, 0, ref nullCount);
-                var fsSource = new FixedString32Bytes(); fsSource.Append('S'); fsSource.Append('o'); fsSource.Append('u'); fsSource.Append('r'); fsSource.Append('c'); fsSource.Append('e');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Source, fsSource, ColorSource, 1, ref nullCount);
-                var fsTarget = new FixedString32Bytes(); fsTarget.Append('T'); fsTarget.Append('a'); fsTarget.Append('r'); fsTarget.Append('g'); fsTarget.Append('e'); fsTarget.Append('t');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Target, fsTarget, ColorTarget, 2, ref nullCount);
-                var fsCustom = new FixedString32Bytes(); fsCustom.Append('C'); fsCustom.Append('u'); fsCustom.Append('s'); fsCustom.Append('t'); fsCustom.Append('o'); fsCustom.Append('m');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Custom, fsCustom, ColorCustom, 3, ref nullCount);
+                var fsOwner = new FixedString32Bytes();
+                fsOwner.Append('O');
+                fsOwner.Append('w');
+                fsOwner.Append('n');
+                fsOwner.Append('e');
+                fsOwner.Append('r');
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Owner, fsOwner, ColorOwner, 0,
+                    ref nullCount);
+                var fsSource = new FixedString32Bytes();
+                fsSource.Append('S');
+                fsSource.Append('o');
+                fsSource.Append('u');
+                fsSource.Append('r');
+                fsSource.Append('c');
+                fsSource.Append('e');
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Source, fsSource, ColorSource,
+                    1, ref nullCount);
+                var fsTarget = new FixedString32Bytes();
+                fsTarget.Append('T');
+                fsTarget.Append('a');
+                fsTarget.Append('r');
+                fsTarget.Append('g');
+                fsTarget.Append('e');
+                fsTarget.Append('t');
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Target, fsTarget, ColorTarget,
+                    2, ref nullCount);
+                var fsCustom = new FixedString32Bytes();
+                fsCustom.Append('C');
+                fsCustom.Append('u');
+                fsCustom.Append('s');
+                fsCustom.Append('t');
+                fsCustom.Append('o');
+                fsCustom.Append('m');
+                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Custom, fsCustom, ColorCustom,
+                    3, ref nullCount);
             }
 
             private void DrawTether(Entity self, float3 selfPos, Entity target, FixedString32Bytes label, Color color,
@@ -119,7 +145,10 @@ namespace BovineLabs.Essence.Debug
                     dimColor.a = 0.4f;
                     var nullPos = selfPos + new float3(0, 0.8f + nullCount * 0.25f, 0);
                     var msg = new FixedString32Bytes();
-                    msg.Append('['); msg.Append('N'); msg.Append('o'); msg.Append(' ');
+                    msg.Append('[');
+                    msg.Append('N');
+                    msg.Append('o');
+                    msg.Append(' ');
                     msg.Append(label);
                     msg.Append(']');
                     Drawer.Text32(nullPos, msg, dimColor, 10f);
@@ -133,7 +162,24 @@ namespace BovineLabs.Essence.Debug
                     var msg = new FixedString32Bytes();
                     msg.Append('[');
                     msg.Append(label);
-                    msg.Append(' '); msg.Append('h'); msg.Append('a'); msg.Append('s'); msg.Append(' '); msg.Append('n'); msg.Append('o'); msg.Append(' '); msg.Append('T'); msg.Append('r'); msg.Append('a'); msg.Append('n'); msg.Append('s'); msg.Append('f'); msg.Append('o'); msg.Append('r'); msg.Append('m'); msg.Append(']');
+                    msg.Append(' ');
+                    msg.Append('h');
+                    msg.Append('a');
+                    msg.Append('s');
+                    msg.Append(' ');
+                    msg.Append('n');
+                    msg.Append('o');
+                    msg.Append(' ');
+                    msg.Append('T');
+                    msg.Append('r');
+                    msg.Append('a');
+                    msg.Append('n');
+                    msg.Append('s');
+                    msg.Append('f');
+                    msg.Append('o');
+                    msg.Append('r');
+                    msg.Append('m');
+                    msg.Append(']');
                     Drawer.Text32(errPos, msg, TimelineDebugColors.Error, 10f);
                     nullCount++;
                     return;

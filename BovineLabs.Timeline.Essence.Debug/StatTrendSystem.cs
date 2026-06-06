@@ -4,7 +4,6 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Essence.Debug
@@ -42,14 +41,12 @@ namespace BovineLabs.Essence.Debug
             if (!EssenceTelemetryConfig.Enabled.Data && !SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
 
             var time = SystemAPI.Time.ElapsedTime;
-            if (time < this.nextSample) return;
-            this.nextSample = time + SampleInterval;
+            if (time < nextSample) return;
+            nextSample = time + SampleInterval;
 
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
-            foreach (var (_, entity) in SystemAPI.Query<DynamicBuffer<Stat>>().WithNone<StatTrendSample>().WithEntityAccess())
-            {
-                ecb.AddBuffer<StatTrendSample>(entity);
-            }
+            foreach (var (_, entity) in SystemAPI.Query<DynamicBuffer<Stat>>().WithNone<StatTrendSample>()
+                         .WithEntityAccess()) ecb.AddBuffer<StatTrendSample>(entity);
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
@@ -59,14 +56,12 @@ namespace BovineLabs.Essence.Debug
                 trend.Cull(time, RetentionWindow);
 
                 foreach (var stat in stats.AsMap())
-                {
                     trend.Add(new StatTrendSample
                     {
                         Key = stat.Key.Value,
                         Value = stat.Value.Value,
-                        Timestamp = time,
+                        Timestamp = time
                     });
-                }
             }
         }
     }

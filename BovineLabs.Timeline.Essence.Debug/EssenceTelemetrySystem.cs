@@ -30,14 +30,17 @@ namespace BovineLabs.Essence.Debug
         [ConfigVar("essencetelemetry.stat-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the stats panel.")]
         public static readonly SharedStatic<Vector4> StatOffset = SharedStatic<Vector4>.GetOrCreate<Tags.StatOffset>();
 
-        [ConfigVar("essencetelemetry.intrinsic-offset", 0f, 1.3f, 0f, 0f, "World anchor offset for the intrinsics panel.")]
-        public static readonly SharedStatic<Vector4> IntrinsicOffset = SharedStatic<Vector4>.GetOrCreate<Tags.IntrinsicOffset>();
+        [ConfigVar("essencetelemetry.intrinsic-offset", 0f, 1.3f, 0f, 0f,
+            "World anchor offset for the intrinsics panel.")]
+        public static readonly SharedStatic<Vector4> IntrinsicOffset =
+            SharedStatic<Vector4>.GetOrCreate<Tags.IntrinsicOffset>();
 
         [ConfigVar("essencetelemetry.stat-color", 0.42f, 0.68f, 0.98f, 1f, "Accent for stats.")]
         public static readonly SharedStatic<Color> StatColor = SharedStatic<Color>.GetOrCreate<Tags.StatColor>();
 
         [ConfigVar("essencetelemetry.intrinsic-color", 0.74f, 0.56f, 1f, 1f, "Accent for intrinsics.")]
-        public static readonly SharedStatic<Color> IntrinsicColor = SharedStatic<Color>.GetOrCreate<Tags.IntrinsicColor>();
+        public static readonly SharedStatic<Color> IntrinsicColor =
+            SharedStatic<Color>.GetOrCreate<Tags.IntrinsicColor>();
 
         [ConfigVar("essencetelemetry.stat-filter", "", "Filter stats by name prefix.")]
         public static readonly SharedStatic<FixedString32Bytes> StatFilter =
@@ -52,15 +55,41 @@ namespace BovineLabs.Essence.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct Scale { }
-            public struct StatOffset { }
-            public struct IntrinsicOffset { }
-            public struct StatColor { }
-            public struct IntrinsicColor { }
-            public struct StatFilter { }
-            public struct IntrinsicFilter { }
-            public struct Bars { }
+            public struct Enabled
+            {
+            }
+
+            public struct Scale
+            {
+            }
+
+            public struct StatOffset
+            {
+            }
+
+            public struct IntrinsicOffset
+            {
+            }
+
+            public struct StatColor
+            {
+            }
+
+            public struct IntrinsicColor
+            {
+            }
+
+            public struct StatFilter
+            {
+            }
+
+            public struct IntrinsicFilter
+            {
+            }
+
+            public struct Bars
+            {
+            }
         }
     }
 
@@ -87,33 +116,34 @@ namespace BovineLabs.Essence.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!TimelineDebugUtility.TryGetDrawer<EssenceTelemetrySystem>(ref state, EssenceTelemetryConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<EssenceTelemetrySystem>(ref state,
+                    EssenceTelemetryConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new RenderJob
             {
-                Renderer             = drawer,
-                Camera               = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
-                Scale                = EssenceTelemetryConfig.Scale.Data,
-                StatWorldOffset      = ((float4)EssenceTelemetryConfig.StatOffset.Data).xyz,
+                Renderer = drawer,
+                Camera = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
+                Scale = EssenceTelemetryConfig.Scale.Data,
+                StatWorldOffset = ((float4)EssenceTelemetryConfig.StatOffset.Data).xyz,
                 IntrinsicWorldOffset = ((float4)EssenceTelemetryConfig.IntrinsicOffset.Data).xyz,
-                StatAccent           = EssenceTelemetryConfig.StatColor.Data,
-                StatFilter           = EssenceTelemetryConfig.StatFilter.Data,
-                IntrinsicAccent      = EssenceTelemetryConfig.IntrinsicColor.Data,
-                IntrinsicFilter      = EssenceTelemetryConfig.IntrinsicFilter.Data,
-                ShowBars             = EssenceTelemetryConfig.Bars.Data,
-                PanelSpacing         = TelemetryConfig.PanelSpacing.Data,
-                UseLogFill           = TelemetryConfig.LogFill.Data,
-                TransformHandle      = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
-                LocalTransformHandle  = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
-                ParentHandle          = SystemAPI.GetComponentTypeHandle<Parent>(true),
-                StatHandle           = SystemAPI.GetBufferTypeHandle<Stat>(true),
-                IntrinsicHandle      = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
-                TrendHandle          = SystemAPI.GetBufferTypeHandle<StatTrendSample>(true),
-                StatDefaultsHandle   = SystemAPI.GetComponentTypeHandle<StatDefaults>(true),
-                StatModifiersHandle  = SystemAPI.GetBufferTypeHandle<StatModifiers>(true),
-                DebugNames           = SystemAPI.GetSingleton<EssenceDebugNames>(),
-                Config               = SystemAPI.GetSingleton<EssenceConfig>(),
+                StatAccent = EssenceTelemetryConfig.StatColor.Data,
+                StatFilter = EssenceTelemetryConfig.StatFilter.Data,
+                IntrinsicAccent = EssenceTelemetryConfig.IntrinsicColor.Data,
+                IntrinsicFilter = EssenceTelemetryConfig.IntrinsicFilter.Data,
+                ShowBars = EssenceTelemetryConfig.Bars.Data,
+                PanelSpacing = TelemetryConfig.PanelSpacing.Data,
+                UseLogFill = TelemetryConfig.LogFill.Data,
+                TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
+                LocalTransformHandle = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle = SystemAPI.GetComponentTypeHandle<Parent>(true),
+                StatHandle = SystemAPI.GetBufferTypeHandle<Stat>(true),
+                IntrinsicHandle = SystemAPI.GetBufferTypeHandle<Intrinsic>(true),
+                TrendHandle = SystemAPI.GetBufferTypeHandle<StatTrendSample>(true),
+                StatDefaultsHandle = SystemAPI.GetComponentTypeHandle<StatDefaults>(true),
+                StatModifiersHandle = SystemAPI.GetBufferTypeHandle<StatModifiers>(true),
+                DebugNames = SystemAPI.GetSingleton<EssenceDebugNames>(),
+                Config = SystemAPI.GetSingleton<EssenceConfig>()
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
@@ -137,13 +167,13 @@ namespace BovineLabs.Essence.Debug
             [ReadOnly] public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
             [ReadOnly] public ComponentTypeHandle<Parent> ParentHandle;
 
-            [ReadOnly] public BufferTypeHandle<Stat>            StatHandle;
-            [ReadOnly] public BufferTypeHandle<Intrinsic>       IntrinsicHandle;
+            [ReadOnly] public BufferTypeHandle<Stat> StatHandle;
+            [ReadOnly] public BufferTypeHandle<Intrinsic> IntrinsicHandle;
             [ReadOnly] public BufferTypeHandle<StatTrendSample> TrendHandle;
             [ReadOnly] public ComponentTypeHandle<StatDefaults> StatDefaultsHandle;
-            [ReadOnly] public BufferTypeHandle<StatModifiers>   StatModifiersHandle;
-            [ReadOnly] public EssenceDebugNames                 DebugNames;
-            [ReadOnly] public EssenceConfig                     Config;
+            [ReadOnly] public BufferTypeHandle<StatModifiers> StatModifiersHandle;
+            [ReadOnly] public EssenceDebugNames DebugNames;
+            [ReadOnly] public EssenceConfig Config;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex,
                 bool useEnabledMask, in v128 chunkEnabledMask)
@@ -164,7 +194,9 @@ namespace BovineLabs.Essence.Debug
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
-                    var head = (hasLocalTransform && !hasParent) ? localTransforms[index].Position : transforms[index].Position;
+                    var head = hasLocalTransform && !hasParent
+                        ? localTransforms[index].Position
+                        : transforms[index].Position;
 
                     if (hasStats)
                     {
@@ -204,7 +236,11 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append('S'); title.Append('T'); title.Append('A'); title.Append('T'); title.Append('S');
+                title.Append('S');
+                title.Append('T');
+                title.Append('A');
+                title.Append('T');
+                title.Append('S');
                 Glyph.TitleRow(Renderer, v, y, title, StatAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -221,7 +257,8 @@ namespace BovineLabs.Essence.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(':'); label.Append(' ');
+                    label.Append(':');
+                    label.Append(' ');
                     label.Append(stat.Value.Value);
                     AppendTrendDelta(ref label, stat.Key.Value, trends);
 
@@ -250,11 +287,17 @@ namespace BovineLabs.Essence.Debug
                     if (baseArray[i].Type.Value != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('B'); detail.Append('a'); detail.Append('s'); detail.Append('e'); detail.Append(':'); detail.Append(' ');
+                    detail.Append('B');
+                    detail.Append('a');
+                    detail.Append('s');
+                    detail.Append('e');
+                    detail.Append(':');
+                    detail.Append(' ');
                     FormatModifier(ref detail, baseArray[i]);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
                 }
+
                 return y;
             }
 
@@ -266,13 +309,22 @@ namespace BovineLabs.Essence.Debug
                     if (mods[i].Value.Type.Value != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('M'); detail.Append('o'); detail.Append('d'); detail.Append(':'); detail.Append(' ');
+                    detail.Append('M');
+                    detail.Append('o');
+                    detail.Append('d');
+                    detail.Append(':');
+                    detail.Append(' ');
                     FormatModifier(ref detail, mods[i].Value);
-                    detail.Append(' '); detail.Append('S'); detail.Append('r'); detail.Append('c'); detail.Append(':');
+                    detail.Append(' ');
+                    detail.Append('S');
+                    detail.Append('r');
+                    detail.Append('c');
+                    detail.Append(':');
                     detail.Append(mods[i].SourceEntity.Index);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
                 }
+
                 return y;
             }
 
@@ -286,7 +338,16 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append('I'); title.Append('N'); title.Append('T'); title.Append('R'); title.Append('I'); title.Append('N'); title.Append('S'); title.Append('I'); title.Append('C'); title.Append('S');
+                title.Append('I');
+                title.Append('N');
+                title.Append('T');
+                title.Append('R');
+                title.Append('I');
+                title.Append('N');
+                title.Append('S');
+                title.Append('I');
+                title.Append('C');
+                title.Append('S');
                 Glyph.TitleRow(Renderer, v, y, title, IntrinsicAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -298,21 +359,24 @@ namespace BovineLabs.Essence.Debug
 
                     var resolved = ResolveIntrinsicRange(intrinsic.Key, stats, ref configs);
                     var fill = resolved.Range > 0
-                        ? (UseLogFill
+                        ? UseLogFill
                             ? Glyph.LogFill(intrinsic.Value, resolved.Min, resolved.Max)
-                            : Glyph.LinearFill(intrinsic.Value, resolved.Min, resolved.Max))
+                            : Glyph.LinearFill(intrinsic.Value, resolved.Min, resolved.Max)
                         : 0.5f;
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(':'); label.Append(' ');
+                    label.Append(':');
+                    label.Append(' ');
                     label.Append(intrinsic.Value);
 
                     if (resolved.Range > 0)
                     {
-                        label.Append(' '); label.Append('[');
+                        label.Append(' ');
+                        label.Append('[');
                         label.Append(resolved.Min);
-                        label.Append('.'); label.Append('.');
+                        label.Append('.');
+                        label.Append('.');
                         label.Append(resolved.Max);
                         label.Append(']');
                     }
@@ -326,11 +390,35 @@ namespace BovineLabs.Essence.Debug
                     if (resolved.HasStatBounds)
                     {
                         var detail = new FixedString128Bytes();
-                        detail.Append('M'); detail.Append('i'); detail.Append('n'); detail.Append(':'); detail.Append(' ');
+                        detail.Append('M');
+                        detail.Append('i');
+                        detail.Append('n');
+                        detail.Append(':');
+                        detail.Append(' ');
                         detail.Append(resolved.Min);
-                        detail.Append(' '); detail.Append('|'); detail.Append(' '); detail.Append('M'); detail.Append('a'); detail.Append('x'); detail.Append(':'); detail.Append(' ');
+                        detail.Append(' ');
+                        detail.Append('|');
+                        detail.Append(' ');
+                        detail.Append('M');
+                        detail.Append('a');
+                        detail.Append('x');
+                        detail.Append(':');
+                        detail.Append(' ');
                         detail.Append(resolved.Max);
-                        detail.Append(' '); detail.Append('('); detail.Append('s'); detail.Append('t'); detail.Append('a'); detail.Append('t'); detail.Append('-'); detail.Append('d'); detail.Append('r'); detail.Append('i'); detail.Append('v'); detail.Append('e'); detail.Append('n'); detail.Append(')');
+                        detail.Append(' ');
+                        detail.Append('(');
+                        detail.Append('s');
+                        detail.Append('t');
+                        detail.Append('a');
+                        detail.Append('t');
+                        detail.Append('-');
+                        detail.Append('d');
+                        detail.Append('r');
+                        detail.Append('i');
+                        detail.Append('v');
+                        detail.Append('e');
+                        detail.Append('n');
+                        detail.Append(')');
                         Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                         y = Glyph.AdvanceLine(y);
                     }
@@ -350,7 +438,7 @@ namespace BovineLabs.Essence.Debug
                     for (var i = 0; i < arr.Length; i++)
                         if (arr[i].Type.Value == key && arr[i].ModifyType == StatModifyType.Added)
                         {
-                            max = math.max(1f, (float)arr[i].Value);
+                            max = math.max(1f, arr[i].Value);
                             break;
                         }
                 }
@@ -387,6 +475,7 @@ namespace BovineLabs.Essence.Debug
                         min = (int)math.floor(minStat.Value);
                         hasStatBounds = true;
                     }
+
                     if (data.Ref.MaxStatKey.Value != 0 && statMap.TryGetValue(data.Ref.MaxStatKey, out var maxStat))
                     {
                         max = (int)math.floor(maxStat.Value);
@@ -399,7 +488,7 @@ namespace BovineLabs.Essence.Debug
                     Min = min,
                     Max = max,
                     Range = max > min ? max - min : 0,
-                    HasStatBounds = hasStatBounds,
+                    HasStatBounds = hasStatBounds
                 };
             }
 
@@ -422,7 +511,9 @@ namespace BovineLabs.Essence.Debug
                 var delta = last - prev;
                 if (math.abs(delta) <= 0.001f) return;
 
-                label.Append(' '); label.Append('('); if (delta > 0) label.Append('+');
+                label.Append(' ');
+                label.Append('(');
+                if (delta > 0) label.Append('+');
                 label.Append(delta);
                 label.Append(')');
             }
@@ -438,12 +529,19 @@ namespace BovineLabs.Essence.Debug
                     case StatModifyType.Additive:
                         if (mod.ValueFloat >= 0) str.Append('+');
                         str.Append(mod.ValueFloat * 100f);
-                        str.Append('%'); str.Append(' '); str.Append('A'); str.Append('d'); str.Append('d');
+                        str.Append('%');
+                        str.Append(' ');
+                        str.Append('A');
+                        str.Append('d');
+                        str.Append('d');
                         break;
                     case StatModifyType.Multiplicative:
                         str.Append('x');
                         str.Append(1f + mod.ValueFloat);
-                        str.Append(' '); str.Append('M'); str.Append('u'); str.Append('l');
+                        str.Append(' ');
+                        str.Append('M');
+                        str.Append('u');
+                        str.Append('l');
                         break;
                 }
             }
@@ -457,8 +555,10 @@ namespace BovineLabs.Essence.Debug
                 return fallback;
             }
 
-            private static bool IsFiltered(FixedString32Bytes name, in FixedString32Bytes filter) =>
-                !filter.IsEmpty && name.IndexOf(filter) == -1;
+            private static bool IsFiltered(FixedString32Bytes name, in FixedString32Bytes filter)
+            {
+                return !filter.IsEmpty && name.IndexOf(filter) == -1;
+            }
         }
     }
 }

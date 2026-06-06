@@ -2,9 +2,8 @@ using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.Essence.Data;
-using BovineLabs.Timeline.Essence.Data.Builders;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Essence.Data.Builders;
 using Unity.Entities;
 using UnityEngine.Timeline;
 

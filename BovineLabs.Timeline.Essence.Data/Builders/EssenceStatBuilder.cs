@@ -1,7 +1,6 @@
 using BovineLabs.Core.EntityCommands;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Essence.Data;
 
 namespace BovineLabs.Timeline.Essence.Data.Builders
 {

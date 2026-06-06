@@ -5,9 +5,7 @@ using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Essence.Debug;
-using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
-using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Active;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Groups;
@@ -37,7 +35,8 @@ namespace BovineLabs.Reaction.Debug
         public static readonly SharedStatic<Vector4> Offset = SharedStatic<Vector4>.GetOrCreate<Tags.Offset>();
 
         [ConfigVar("reactiontelemetry.condition-color", 1f, 0.8f, 0.2f, 1f, "Accent for conditions.")]
-        public static readonly SharedStatic<Color> ConditionColor = SharedStatic<Color>.GetOrCreate<Tags.ConditionColor>();
+        public static readonly SharedStatic<Color> ConditionColor =
+            SharedStatic<Color>.GetOrCreate<Tags.ConditionColor>();
 
         [ConfigVar("reactiontelemetry.event-color", 0.95f, 0.5f, 0.3f, 1f, "Accent for events.")]
         public static readonly SharedStatic<Color> EventColor = SharedStatic<Color>.GetOrCreate<Tags.EventColor>();
@@ -47,12 +46,29 @@ namespace BovineLabs.Reaction.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct Scale { }
-            public struct Offset { }
-            public struct ConditionColor { }
-            public struct EventColor { }
-            public struct CondBits { }
+            public struct Enabled
+            {
+            }
+
+            public struct Scale
+            {
+            }
+
+            public struct Offset
+            {
+            }
+
+            public struct ConditionColor
+            {
+            }
+
+            public struct EventColor
+            {
+            }
+
+            public struct CondBits
+            {
+            }
         }
     }
 
@@ -60,7 +76,7 @@ namespace BovineLabs.Reaction.Debug
     public struct ReactionEventHistoryRecord : IBufferElementData, ITimestampedRecord
     {
         public ushort Key;
-        public int    Value;
+        public int Value;
         public double Timestamp;
 
         double ITimestampedRecord.Timestamp => Timestamp;
@@ -84,18 +100,17 @@ namespace BovineLabs.Reaction.Debug
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
             foreach (var (events, entity) in
-                SystemAPI.Query<DynamicBuffer<ConditionEvent>>()
-                    .WithNone<ReactionEventHistoryRecord>()
-                    .WithEntityAccess())
-            {
-                if (events.Length > 0) ecb.AddBuffer<ReactionEventHistoryRecord>(entity);
-            }
+                     SystemAPI.Query<DynamicBuffer<ConditionEvent>>()
+                         .WithNone<ReactionEventHistoryRecord>()
+                         .WithEntityAccess())
+                if (events.Length > 0)
+                    ecb.AddBuffer<ReactionEventHistoryRecord>(entity);
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
             foreach (var (events, history) in
-                SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
+                     SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
             {
                 history.Cull(time, RetentionWindow);
 
@@ -106,7 +121,7 @@ namespace BovineLabs.Reaction.Debug
                     {
                         Key = kvp.Key.Value,
                         Value = kvp.Value,
-                        Timestamp = time,
+                        Timestamp = time
                     });
             }
         }
@@ -134,27 +149,28 @@ namespace BovineLabs.Reaction.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!TimelineDebugUtility.TryGetDrawer<ReactionTelemetrySystem>(ref state, ReactionTelemetryConfig.Enabled.Data, out var drawer))
+            if (!TimelineDebugUtility.TryGetDrawer<ReactionTelemetrySystem>(ref state,
+                    ReactionTelemetryConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new RenderJob
             {
-                Renderer              = drawer,
-                Camera                = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
-                Scale                 = ReactionTelemetryConfig.Scale.Data,
-                WorldOffset           = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
-                ConditionAccent       = ReactionTelemetryConfig.ConditionColor.Data,
-                EventAccent           = ReactionTelemetryConfig.EventColor.Data,
-                CondBits              = ReactionTelemetryConfig.CondBits.Data,
-                Time                  = SystemAPI.Time.ElapsedTime,
-                TransformHandle       = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
-                LocalTransformHandle  = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
-                ParentHandle          = SystemAPI.GetComponentTypeHandle<Parent>(true),
-                ActiveHandle          = SystemAPI.GetComponentTypeHandle<Active>(true),
+                Renderer = drawer,
+                Camera = SystemAPI.GetSingleton<DrawSystem.Singleton>().CameraCulling,
+                Scale = ReactionTelemetryConfig.Scale.Data,
+                WorldOffset = ((float4)ReactionTelemetryConfig.Offset.Data).xyz,
+                ConditionAccent = ReactionTelemetryConfig.ConditionColor.Data,
+                EventAccent = ReactionTelemetryConfig.EventColor.Data,
+                CondBits = ReactionTelemetryConfig.CondBits.Data,
+                Time = SystemAPI.Time.ElapsedTime,
+                TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
+                LocalTransformHandle = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
+                ParentHandle = SystemAPI.GetComponentTypeHandle<Parent>(true),
+                ActiveHandle = SystemAPI.GetComponentTypeHandle<Active>(true),
                 ConditionActiveHandle = SystemAPI.GetComponentTypeHandle<ConditionActive>(true),
                 ConditionValuesHandle = SystemAPI.GetBufferTypeHandle<ConditionValues>(true),
-                HistoryHandle         = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
-                DebugNames            = SystemAPI.GetSingleton<EssenceDebugNames>(),
+                HistoryHandle = SystemAPI.GetBufferTypeHandle<ReactionEventHistoryRecord>(true),
+                DebugNames = SystemAPI.GetSingleton<EssenceDebugNames>()
             }.Schedule(telemetryQuery, state.Dependency);
         }
 
@@ -170,15 +186,15 @@ namespace BovineLabs.Reaction.Debug
             public int CondBits;
             public double Time;
 
-            [ReadOnly] public ComponentTypeHandle<LocalToWorld>            TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
             [ReadOnly] public ComponentTypeHandle<Parent> ParentHandle;
 
-            [ReadOnly] public ComponentTypeHandle<Active>                  ActiveHandle;
-            [ReadOnly] public ComponentTypeHandle<ConditionActive>         ConditionActiveHandle;
-            [ReadOnly] public BufferTypeHandle<ConditionValues>            ConditionValuesHandle;
+            [ReadOnly] public ComponentTypeHandle<Active> ActiveHandle;
+            [ReadOnly] public ComponentTypeHandle<ConditionActive> ConditionActiveHandle;
+            [ReadOnly] public BufferTypeHandle<ConditionValues> ConditionValuesHandle;
             [ReadOnly] public BufferTypeHandle<ReactionEventHistoryRecord> HistoryHandle;
-            [ReadOnly] public EssenceDebugNames                           DebugNames;
+            [ReadOnly] public EssenceDebugNames DebugNames;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex,
                 bool useEnabledMask, in v128 chunkEnabledMask)
@@ -200,7 +216,9 @@ namespace BovineLabs.Reaction.Debug
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var index))
                 {
-                    var head = (hasLocalTransform && !hasParent) ? localTransforms[index].Position : transforms[index].Position;
+                    var head = hasLocalTransform && !hasParent
+                        ? localTransforms[index].Position
+                        : transforms[index].Position;
                     var v = View.WorldFacing(Camera, head, Scale).NudgeWorld(WorldOffset);
 
                     var y = 0f;
@@ -209,7 +227,7 @@ namespace BovineLabs.Reaction.Debug
                         y = EmitActiveState(v, y, activeMask[index]);
 
                     if (hasConditions)
-                        y = EmitConditionBits(v, y, (uint)conditions[index].Value.Data);
+                        y = EmitConditionBits(v, y, conditions[index].Value.Data);
 
                     if (hasValues)
                         y = EmitConditionValues(v, y, valuesAcc[index]);
@@ -225,8 +243,32 @@ namespace BovineLabs.Reaction.Debug
                 var accent = isActive ? Ink.Live : Ink.Idle;
 
                 var label = new FixedString128Bytes();
-                if (isActive) { label.Append('A'); label.Append('C'); label.Append('T'); label.Append('I'); label.Append('V'); label.Append('E'); } else { label.Append('I'); label.Append('D'); label.Append('L'); label.Append('E'); }
-                label.Append(' '); label.Append('R'); label.Append('E'); label.Append('A'); label.Append('C'); label.Append('T'); label.Append('I'); label.Append('O'); label.Append('N');
+                if (isActive)
+                {
+                    label.Append('A');
+                    label.Append('C');
+                    label.Append('T');
+                    label.Append('I');
+                    label.Append('V');
+                    label.Append('E');
+                }
+                else
+                {
+                    label.Append('I');
+                    label.Append('D');
+                    label.Append('L');
+                    label.Append('E');
+                }
+
+                label.Append(' ');
+                label.Append('R');
+                label.Append('E');
+                label.Append('A');
+                label.Append('C');
+                label.Append('T');
+                label.Append('I');
+                label.Append('O');
+                label.Append('N');
 
                 Glyph.BarRow(Renderer, v, 0f, y, label, fill, accent, TelemetryConfig.TitleSize.Data);
                 return Glyph.AdvanceLine(y);
@@ -238,7 +280,18 @@ namespace BovineLabs.Reaction.Debug
                 var bits = math.min(CondBits, 32);
 
                 var headerLabel = new FixedString128Bytes();
-                headerLabel.Append('C'); headerLabel.Append('o'); headerLabel.Append('n'); headerLabel.Append('d'); headerLabel.Append('i'); headerLabel.Append('t'); headerLabel.Append('i'); headerLabel.Append('o'); headerLabel.Append('n'); headerLabel.Append('s'); headerLabel.Append(' '); headerLabel.Append('(');
+                headerLabel.Append('C');
+                headerLabel.Append('o');
+                headerLabel.Append('n');
+                headerLabel.Append('d');
+                headerLabel.Append('i');
+                headerLabel.Append('t');
+                headerLabel.Append('i');
+                headerLabel.Append('o');
+                headerLabel.Append('n');
+                headerLabel.Append('s');
+                headerLabel.Append(' ');
+                headerLabel.Append('(');
                 headerLabel.Append(mask);
                 headerLabel.Append(')');
                 Glyph.TitleRow(Renderer, v, y, headerLabel, ConditionAccent);
@@ -250,9 +303,29 @@ namespace BovineLabs.Reaction.Debug
                     var fill = isSet ? 1f : 0f;
 
                     var bitLabel = new FixedString128Bytes();
-                    bitLabel.Append('B'); bitLabel.Append('i'); bitLabel.Append('t'); bitLabel.Append(' ');
+                    bitLabel.Append('B');
+                    bitLabel.Append('i');
+                    bitLabel.Append('t');
+                    bitLabel.Append(' ');
                     bitLabel.Append(i);
-                    if (isSet) { bitLabel.Append(':'); bitLabel.Append(' '); bitLabel.Append('S'); bitLabel.Append('E'); bitLabel.Append('T'); } else { bitLabel.Append(':'); bitLabel.Append(' '); bitLabel.Append('c'); bitLabel.Append('l'); bitLabel.Append('e'); bitLabel.Append('a'); bitLabel.Append('r'); }
+                    if (isSet)
+                    {
+                        bitLabel.Append(':');
+                        bitLabel.Append(' ');
+                        bitLabel.Append('S');
+                        bitLabel.Append('E');
+                        bitLabel.Append('T');
+                    }
+                    else
+                    {
+                        bitLabel.Append(':');
+                        bitLabel.Append(' ');
+                        bitLabel.Append('c');
+                        bitLabel.Append('l');
+                        bitLabel.Append('e');
+                        bitLabel.Append('a');
+                        bitLabel.Append('r');
+                    }
 
                     Glyph.BarRow(Renderer, v, 0f, y, bitLabel, fill, ConditionAccent, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -268,12 +341,31 @@ namespace BovineLabs.Reaction.Debug
                 var anyNonZero = false;
 
                 for (var i = 0; i < values.Length; i++)
-                    if (values[i].Value != 0) { anyNonZero = true; break; }
+                    if (values[i].Value != 0)
+                    {
+                        anyNonZero = true;
+                        break;
+                    }
 
                 if (!anyNonZero) return y;
 
                 var header = new FixedString128Bytes();
-                header.Append('C'); header.Append('o'); header.Append('n'); header.Append('d'); header.Append('i'); header.Append('t'); header.Append('i'); header.Append('o'); header.Append('n'); header.Append(' '); header.Append('V'); header.Append('a'); header.Append('l'); header.Append('u'); header.Append('e'); header.Append('s');
+                header.Append('C');
+                header.Append('o');
+                header.Append('n');
+                header.Append('d');
+                header.Append('i');
+                header.Append('t');
+                header.Append('i');
+                header.Append('o');
+                header.Append('n');
+                header.Append(' ');
+                header.Append('V');
+                header.Append('a');
+                header.Append('l');
+                header.Append('u');
+                header.Append('e');
+                header.Append('s');
                 Glyph.TitleRow(Renderer, v, y, header, ConditionAccent);
                 y = Glyph.AdvanceLine(y);
 
@@ -283,9 +375,15 @@ namespace BovineLabs.Reaction.Debug
                     if (raw == 0) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('C'); detail.Append('o'); detail.Append('n'); detail.Append('d'); detail.Append('[');
+                    detail.Append('C');
+                    detail.Append('o');
+                    detail.Append('n');
+                    detail.Append('d');
+                    detail.Append('[');
                     detail.Append(i);
-                    detail.Append(']'); detail.Append(':'); detail.Append(' ');
+                    detail.Append(']');
+                    detail.Append(':');
+                    detail.Append(' ');
                     detail.Append(raw);
 
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
@@ -304,7 +402,19 @@ namespace BovineLabs.Reaction.Debug
                 ref var names = ref DebugNames.Value.Value.EventNames;
 
                 var header = new FixedString128Bytes();
-                header.Append('E'); header.Append('v'); header.Append('e'); header.Append('n'); header.Append('t'); header.Append(' '); header.Append('H'); header.Append('i'); header.Append('s'); header.Append('t'); header.Append('o'); header.Append('r'); header.Append('y');
+                header.Append('E');
+                header.Append('v');
+                header.Append('e');
+                header.Append('n');
+                header.Append('t');
+                header.Append(' ');
+                header.Append('H');
+                header.Append('i');
+                header.Append('s');
+                header.Append('t');
+                header.Append('o');
+                header.Append('r');
+                header.Append('y');
                 Glyph.TitleRow(Renderer, v, y, header, EventAccent);
                 y = Glyph.AdvanceLine(y);
 
@@ -319,9 +429,11 @@ namespace BovineLabs.Reaction.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(eventName);
-                    label.Append(':'); label.Append(' ');
+                    label.Append(':');
+                    label.Append(' ');
                     label.Append(record.Value);
-                    label.Append(' '); label.Append('(');
+                    label.Append(' ');
+                    label.Append('(');
                     AppendAge(ref label, age);
                     label.Append(')');
 
@@ -338,7 +450,8 @@ namespace BovineLabs.Reaction.Debug
                 if (ms < 1000)
                 {
                     str.Append(ms);
-                    str.Append('m'); str.Append('s');
+                    str.Append('m');
+                    str.Append('s');
                 }
                 else
                 {
