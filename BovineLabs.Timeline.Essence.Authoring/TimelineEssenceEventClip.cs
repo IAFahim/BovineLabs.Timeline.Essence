@@ -3,8 +3,9 @@ using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Essence.Data;
+using BovineLabs.Timeline.Essence.Data.Builders;
+using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
 using UnityEngine.Timeline;
 
@@ -22,17 +23,17 @@ namespace BovineLabs.Timeline.Essence.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            var commands = new BakerCommands(context.Baker, clipEntity);
-
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
-            commands.AddComponent(new TimelineEssenceEventData
+            var builder = new EssenceEventBuilder
             {
                 RouteTo = routeTo,
                 RouteLinkKey = linkKey,
                 Event = conditionEvent ? conditionEvent.Key : ConditionKey.Null,
                 Value = value
-            });
+            };
+            var commands = new BakerCommands(context.Baker, clipEntity);
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

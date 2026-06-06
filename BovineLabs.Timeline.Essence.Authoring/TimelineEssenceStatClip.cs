@@ -2,8 +2,9 @@ using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Essence.Data;
+using BovineLabs.Timeline.Essence.Data.Builders;
+using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
 using UnityEngine.Timeline;
 
@@ -24,11 +25,9 @@ namespace BovineLabs.Timeline.Essence.Authoring
         {
             if (stat == null) return;
 
-            var commands = new BakerCommands(context.Baker, clipEntity);
-
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
-            commands.AddComponent(new TimelineEssenceStatData
+            var builder = new EssenceStatBuilder
             {
                 RouteTo = routeTo,
                 RouteLinkKey = linkKey,
@@ -38,7 +37,9 @@ namespace BovineLabs.Timeline.Essence.Authoring
                     or StatAuthoringType.Less
                     ? -value
                     : value
-            });
+            };
+            var commands = new BakerCommands(context.Baker, clipEntity);
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }
