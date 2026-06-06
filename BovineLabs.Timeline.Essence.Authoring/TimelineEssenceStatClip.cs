@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
@@ -23,9 +24,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
         {
             if (stat == null) return;
 
+            var commands = new BakerCommands(context.Baker, clipEntity);
+
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
-            context.Baker.AddComponent(clipEntity, new TimelineEssenceStatData
+            commands.AddComponent(new TimelineEssenceStatData
             {
                 RouteTo = routeTo,
                 RouteLinkKey = linkKey,
