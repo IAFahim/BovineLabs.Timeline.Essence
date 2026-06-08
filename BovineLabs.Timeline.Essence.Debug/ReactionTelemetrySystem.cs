@@ -119,7 +119,7 @@ namespace BovineLabs.Reaction.Debug
                 foreach (var kvp in events.AsMap())
                     history.Insert(0, new ReactionEventHistoryRecord
                     {
-                        Key = kvp.Key.Value,
+                        Key = (ushort)kvp.Key.Value,
                         Value = kvp.Value,
                         Timestamp = time
                     });

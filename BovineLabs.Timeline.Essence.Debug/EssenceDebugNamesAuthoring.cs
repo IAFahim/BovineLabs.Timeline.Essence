@@ -36,9 +36,9 @@ namespace BovineLabs.Essence.Debug
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<EssenceDebugNames.Data>();
 
-            BakeNames(builder, ref root.StatNames, essence.StatSchemas, schema => schema.Key);
-            BakeNames(builder, ref root.IntrinsicNames, essence.IntrinsicSchemas, schema => schema.Key);
-            BakeNames(builder, ref root.EventNames, reaction.ConditionEvents, schema => schema.Key);
+            BakeNames(builder, ref root.StatNames, essence.StatSchemas, schema => (ushort)schema.Key);
+            BakeNames(builder, ref root.IntrinsicNames, essence.IntrinsicSchemas, schema => (ushort)schema.Key);
+            BakeNames(builder, ref root.EventNames, reaction.ConditionEvents, schema => (ushort)schema.Key);
 
             var blob = builder.CreateBlobAssetReference<EssenceDebugNames.Data>(Allocator.Persistent);
             AddBlobAsset(ref blob, out _);
