@@ -1,0 +1,17 @@
+[
+  {
+    "id": "unity-track-essence-event",
+    "displayName": "Track Essence Event",
+    "description": "Master of TimelineEssenceEventTrack + TimelineEssenceEventClip (package BovineLabs.Timeline.Essence) — firing transient ConditionEvents at entities from the timeline (the cutscene→reaction bridge), routeTo/routeLink resolution, the all-silent Essence guard rule; carries the ESSENCE FAMILY REFERENCE. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"at this moment, fire the OnX event at this thing\"."
+  },
+  {
+    "id": "unity-track-essence-intrinsic",
+    "displayName": "Track Essence Intrinsic",
+    "description": "Master of TimelineEssenceIntrinsicTrack + TimelineEssenceIntrinsicClip (package BovineLabs.Timeline.Essence) — one-shot PERMANENT integer counters with self-healing auto-add and stat-driven clamping. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"at this beat, grant +N / consume N of a counter\"."
+  },
+  {
+    "id": "unity-track-essence-stat",
+    "displayName": "Track Essence Stat",
+    "description": "Master of TimelineEssenceStatTrack + TimelineEssenceStatClip (package BovineLabs.Timeline.Essence) — while-active stat modifiers (add-on-enter/remove-on-exit by clip identity), the ×100 fixed-point int-Added truth, and the formula Σadded×(1+Σincreased)×Π(1+more). Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"during this clip, buff/nerf a stat\"."
+  }
+]

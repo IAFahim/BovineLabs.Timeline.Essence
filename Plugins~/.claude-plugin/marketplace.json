@@ -1,0 +1,13 @@
+{
+  "name": "bovinelabs-timeline-essence",
+  "owner": {
+    "name": "PRO_GrAMmER PRO_GrAMmER (PRO_GrAMmER)"
+  },
+  "plugins": [
+    {
+      "name": "bovinelabs-timeline-essence",
+      "source": "./",
+      "description": "Vex Unity agent skills shipped with BovineLabs Timeline Essence."
+    }
+  ]
+}
