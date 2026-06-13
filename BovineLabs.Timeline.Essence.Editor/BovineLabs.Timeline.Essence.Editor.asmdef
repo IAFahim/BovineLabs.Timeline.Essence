@@ -3,6 +3,7 @@
   "rootNamespace": "",
   "references": [
     "BovineLabs.Core",
+    "BovineLabs.Core.Authoring",
     "BovineLabs.Core.Editor",
     "BovineLabs.Core.Extensions",
     "BovineLabs.Core.Extensions.Editor",
@@ -11,6 +12,8 @@
     "BovineLabs.Timeline.Essence",
     "BovineLabs.Timeline.Essence.Authoring",
     "BovineLabs.Timeline.Essence.Data",
+    "UnityCliConnector.Editor",
+    "BovineLabs.Timeline.Core.Editor",
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
