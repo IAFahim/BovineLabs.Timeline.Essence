@@ -29,4 +29,9 @@ namespace BovineLabs.Timeline.Essence.Data
         public StatModifyType ModifyType;
         public float Value;
     }
+
+    public struct TimelineEssenceStatState : IComponentData
+    {
+        public Entity AppliedTarget;
+    }
 }

@@ -4,6 +4,7 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -18,29 +19,42 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceStatSystem : ISystem
     {
+        private UnsafeComponentLookup<Targets> targetsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var addStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
-            var targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            targetsLookup.Update(ref state);
+            linkSourceLookup.Update(ref state);
+            linkLookup.Update(ref state);
 
             var gatherAddJob = new GatherAddJob
             {
                 Mutations = addStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup
+                TargetsLookup = targetsLookup,
+                LinkSources = linkSourceLookup,
+                Links = linkLookup
             };
             var gatherRemoveJob = new GatherRemoveJob
             {
-                Mutations = removeStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup
+                Mutations = removeStats.AsParallelWriter()
             };
 
-            state.Dependency = JobHandle.CombineDependencies(
-                gatherAddJob.ScheduleParallel(state.Dependency),
-                gatherRemoveJob.ScheduleParallel(state.Dependency)
-            );
+            state.Dependency = gatherRemoveJob.ScheduleParallel(state.Dependency);
+            state.Dependency = gatherAddJob.ScheduleParallel(state.Dependency);
 
             state.Dependency = new ApplyJob
             {
@@ -65,13 +79,16 @@ namespace BovineLabs.Timeline.Essence
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
+            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
 
-            private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
+            private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data,
+                ref TimelineEssenceStatState state)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
-                        out var target))
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                        TargetsLookup, LinkSources, Links, out var target))
                 {
                     var modifier = new StatModifier { Type = data.Stat, ModifyType = data.ModifyType };
 
@@ -79,6 +96,8 @@ namespace BovineLabs.Timeline.Essence
                         modifier.Value = (int)data.Value;
                     else
                         modifier.ValueFloat = data.Value;
+
+                    state.AppliedTarget = target;
 
                     Mutations.Enqueue(new StatMutation
                     {
@@ -96,14 +115,15 @@ namespace BovineLabs.Timeline.Essence
         private partial struct GatherRemoveJob : IJobEntity
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
-            private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data)
+            private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data,
+                in TimelineEssenceStatState state)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
-                if (TimelineEssenceResolver.TryResolveTarget(data.RouteTo, binding.Value, TargetsLookup,
-                        out var target)) Mutations.Enqueue(new StatMutation { Target = target, Source = clipEntity });
+                if (state.AppliedTarget == Entity.Null) return;
+
+                Mutations.Enqueue(new StatMutation { Target = state.AppliedTarget, Source = clipEntity });
             }
         }
 

@@ -1,6 +1,7 @@
 using BovineLabs.Core.EntityCommands;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence.Data.Builders
 {
@@ -22,6 +23,11 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
                 Stat = Stat,
                 ModifyType = ModifyType,
                 Value = Value
+            });
+
+            builder.AddComponent(new TimelineEssenceStatState
+            {
+                AppliedTarget = Entity.Null
             });
         }
     }
