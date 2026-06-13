@@ -1,6 +1,6 @@
 ---
 name: unity-track-essence-event
-description: Master of TimelineEssenceEventTrack + TimelineEssenceEventClip (package BovineLabs.Timeline.Essence) — firing transient ConditionEvents at entities from the timeline (the cutscene→reaction bridge), routeTo/routeLink resolution, the all-silent Essence guard rule; carries the ESSENCE FAMILY REFERENCE. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks "at this moment, fire the OnX event at this thing".
+description: Master of TimelineEssenceEventTrack + TimelineEssenceEventClip (package BovineLabs.Timeline.Essence) — firing transient ConditionEvents at entities from the timeline (the cutscene→reaction bridge), routeTo/routeLink resolution, the all-silent Essence guard rule; carries the ESSENCE FAMILY REFERENCE. Portable to any project containing the package; worked example from vex-ee.
 ---
 
 # TimelineEssenceEventTrack specialist
@@ -11,17 +11,20 @@ You are the specialist for **`TimelineEssenceEventTrack`** and **`TimelineEssenc
 `BovineLabs.Timeline.Essence`, namespace `BovineLabs.Timeline.Essence.Authoring`. Scope: exactly this track — one clip = one
 edge-triggered write of a transient `ConditionEvent` (key + amount) into a resolved entity's event buffer, so Reaction
 conditions keyed by that event can respond. As the FIRST Essence track this skill carries the **ESSENCE FAMILY REFERENCE** the
-Stat and Intrinsic skills cross-reference: resolver semantics, all-silent guard matrix, dead-`RouteLinkKey`-on-Stat. Triad:
-**events = transient signals (fire, react, evaporate — THIS)**, intrinsics = permanent integer counters, stats = while-active
-float modifiers. Stage construction belongs to `unity-stage-foundations`. Behave per unity-agent-protocol; operate the editor
-per unity-cli.
+Stat (`unity-track-essence-stat`) and Intrinsic (`unity-track-essence-intrinsic`) skills cross-reference: resolver semantics,
+all-silent guard matrix, dead-`RouteLinkKey`-on-Stat. Triad: **events = transient signals (fire, react, evaporate — THIS)**,
+intrinsics = permanent integer counters, stats = while-active float modifiers. Stage construction belongs to
+`unity-stage-foundations`.
+
+**Operate per `unity-timeline-track-authoring`; behave per `unity-agent-protocol`; use the editor per `unity-cli`.** That shared
+skill owns the discovery preamble (§1), the SubScene bracket (§2), the undo-appendix structure (§3), and the verification
+protocol (§4); this skill keeps ONLY the track-unique facts below.
 
 ## 2. PORTABLE SEMANTICS
 
-True in ANY project containing `BovineLabs.Timeline.Essence` (plus its Essence and Reaction dependencies). Provenance tags =
-where PROVEN, not where it applies. (All verified vex-ee 2026-06 via reflection dumps, package-source quotes, raw YAML,
-fresh-load read-backs, a real forced bake for the silent-null demo — all `unity-cli exec`, no play mode; runtime claims
-source-derived.)
+True in ANY project containing `BovineLabs.Timeline.Essence` (plus its Essence and Reaction dependencies). All verified vex-ee
+2026-06 via reflection dumps, package-source quotes, raw YAML, fresh-load read-backs, and a real forced bake for the
+silent-null demo (all `unity-cli exec`, no play mode; runtime claims source-derived).
 
 ### THE HEADLINE — transient, silent, and summed
 
@@ -30,9 +33,11 @@ persistence; nothing to undo, ever. Every failure mode is **silent** (null event
 nothing" with a clean console is ALWAYS a config/resolution problem. Same-frame duplicates are **pre-summed**: ONE `Trigger`
 per (receiver, key) — the buffer rejects and dev-logs duplicates.
 
+### Type facts
+
 | Type | Base | Facts |
 |---|---|---|
-| `TimelineEssenceEventTrack` | `DOTSTrack` | sealed, EMPTY body — no Bake override, no fields. `[TrackClipType(TimelineEssenceEventClip)]`, `[TrackBindingType(BovineLabs.Reaction.Authoring.Core.TargetsAuthoring)]`, `[TrackColor(0.9,0.4,0.2)]`, `[DisplayName("BovineLabs/Essence/Timeline Event")]` |
+| `TimelineEssenceEventTrack` | `DOTSTrack` | sealed, EMPTY body — no Bake override, no fields. `[TrackClipType(TimelineEssenceEventClip)]`, **`[TrackBindingType(BovineLabs.Reaction.Authoring.Core.TargetsAuthoring)]`** (the bind target), `[TrackColor(0.9,0.4,0.2)]`, `[DisplayName("BovineLabs/Essence/Timeline Event")]` |
 | `TimelineEssenceEventClip` | `DOTSClip` | sealed, `ClipCaps.None` (no blend/ease), `duration => 1` (seed only) |
 | System | `TimelineEssenceEventSystem` | `[UpdateInGroup(TimelineComponentAnimationGroup)]`, `[UpdateAfter(typeof(EntityLinkTargetPatchSystem))]` — events see same-frame TargetPatch retargets |
 
@@ -127,9 +132,10 @@ distinct keys per target per frame, overflow keys Trigger immediately without jo
 `Check.Assume(value != 0, "Can't write 0 value event")`, then `conditionEvents.AsMap().TryAdd(key, value)` — under collections
 checks a false return logs `Trying to write an event {key.Value} multiple times in a frame.` The pre-sum exists to avoid this.
 
-**The clearing path — events are TRANSIENT.** The CONSUMER clears: `ConditionEventWriteSystem` matches each entry against the
+**The silence profile.** Events are TRANSIENT — the CONSUMER clears: `ConditionEventWriteSystem` matches each entry against the
 entity's `EventSubscriber` map, sets matched `ConditionActive` bits, disables `EventsDirty`, runs `conditionEvents.Clear();`;
-downstream `ConditionEventResetSystem` masks the bits back off — both one-frame transients.
+downstream `ConditionEventResetSystem` masks the bits back off — both one-frame transients. Every config failure (null event,
+null link, dead routeTo) is silent at bake AND runtime.
 
 **The timeline → event → reaction bridge.** A `ReactionAuthoring` on a gameplay entity with an event-type condition keyed by a
 `ConditionEventObject` bakes an `EventSubscriber` entry keyed `(ConditionKey, conditionType=event)`. The clip's activation
@@ -153,33 +159,18 @@ lingering state, no asset→scene reference in the chain (only asset→asset ref
   acceptable fallback.)
 - **DO know same-track overlap is accepted via API** — `CreateClip` accepts same-start clips on ONE track; they survive save +
   reload; the DOTS bake treats clips independently. (The Timeline EDITOR would resist this by hand on a ClipCaps.None track.)
-- **DON'T create schema/event assets, ever** — reuse the project's `ConditionEventObject` inventory (discover per §3.4).
+- **DON'T create schema/event assets, ever** — reuse the project's `ConditionEventObject` inventory (discover live; keys drift).
 
-## 3. DISCOVERY RECIPES
+## 3. DISCOVERY DELTA
 
-Act only through `unity-cli exec` / `unity-cli console`; never the filesystem; never play mode. Follow the unity-cli Safe Loop
-on every mutation. Names below are parameters — discover them in THIS project; never assume the worked example (§5).
+Run the discovery preamble per `unity-timeline-track-authoring` §1 (D1 package check with FullName
+`BovineLabs.Timeline.Essence.Authoring.TimelineEssenceEventTrack` / assembly `BovineLabs.Timeline.Essence.Authoring`;
+D2 scene/SubScene; D3 director; D5 `PRE|` capture). Track-specific D4 additions:
 
-**3.1 Confirm the package exists (else report a missing prerequisite — protocol §6):**
-```csharp
-var t = System.Type.GetType("BovineLabs.Timeline.Essence.Authoring.TimelineEssenceEventTrack, BovineLabs.Timeline.Essence.Authoring");
-if (t == null) foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-    { t = asm.GetType("BovineLabs.Timeline.Essence.Authoring.TimelineEssenceEventTrack"); if (t != null) break; }
-return t == null ? "MISSING_PREREQUISITE|TimelineEssenceEventTrack not found - package BovineLabs.Timeline.Essence is absent" : "OK|" + t.AssemblyQualifiedName + "|dataPath=" + UnityEngine.Application.dataPath;
-```
+**Bind target + event key asset (+ link schema).** The track binds the **`TargetsAuthoring` COMPONENT** of a SubScene-baked
+object. For non-Self `routeTo`, verify the slot is assigned in the binding's `TargetsAuthoring` (unassigned = silent total
+loss). Discover event key assets LIVE — **keys drift between projects; NEVER create schema/event assets**:
 
-**3.2 Find the active scene + SubScene(s):** run the unity-cli First Command; record `parentScenePath` + candidate
-`subScenePath`(s).
-
-**3.3 Find PlayableDirector(s) inside the SubScene** (read-only additive open, restore parent after):
-`FindObjectsByType<PlayableDirector>(Include, None)`; print hierarchy path, scene.path, playableAsset path-or-null, other
-components (DOTS timelines need a timeline-reference authoring component on the director); state your selection rule; zero
-directors → protocol §6.
-
-**3.4 Find/confirm the bind target + the event key asset (+ link schema).** The track binds the **`TargetsAuthoring`
-COMPONENT** of a SubScene-baked object. For non-Self `routeTo`, verify the slot is assigned in the binding's
-`TargetsAuthoring` (unassigned = silent total loss). Discover event key assets LIVE — **keys drift between projects; NEVER
-create schema/event assets**:
 ```csharp
 var sb = new System.Text.StringBuilder();
 foreach (var g in UnityEditor.AssetDatabase.FindAssets("t:ConditionEventObject")) {
@@ -189,162 +180,58 @@ foreach (var g in UnityEditor.AssetDatabase.FindAssets("t:ConditionEventObject")
 }
 return sb.ToString();   // pick WITH the designer; guid-sweep consumers before reusing
 ```
+
 If routing via `routeLink`: discover `EntityLinkSchema` assets the same way and confirm the routeTo-resolved entity reaches a
 link root whose `EntityLinkEntry` buffer carries the key — else the link silently falls back to routeTo (path 4). For the
 listening side, find entities whose `ReactionAuthoring` subscribes to the chosen event.
 
-**3.5 Capture the chosen director's existing state — this is pre-state (`PRE|`)**:
-```csharp
-// PRE|playableAsset=<asset PATH or null>   via AssetDatabase.GetAssetPath(director.playableAsset)
-// PRE|binding|<i>|<track name>|<track type>|<bound object hierarchy path + component type, or null>
-//   one line per GetOutputTracks() of the CURRENT asset, via director.GetGenericBinding(track).
-// Capture the asset PATH and each track's NAME/index even when the table looks empty — they are what
-// makes the undo journal replayable (UNDO-1 reloads the old asset by path, re-binds by name/index).
-```
-Record these in the undo journal (§6) before any mutation.
+## 4. CLIP PATTERNS (the bracket's track-specific middle)
 
-**Name resolution rule**: `GameObject.Find` misses inactive objects and is ambiguous on duplicates — confirm the chosen name
-is active and unique in the SubScene, else walk the SubScene roots to the recorded hierarchy path (or `FindObjectsByType`
-filtered by `scene`).
+Build per `unity-timeline-track-authoring` §2. `<TRACK_TYPE>` = `TimelineEssenceEventTrack`, `<CLIP_TYPE>` =
+`TimelineEssenceEventClip`, `<BIND_TARGET>` = `BovineLabs.Reaction.Authoring.Core.TargetsAuthoring`. The event asset is
+DISCOVERED (§3), NEVER created. Per clip set fields via `SerializedObject` on `clip.asset` (camelCase YAML names); clip
+`duration` is irrelevant (one-shot on the start edge):
 
-## 4. CANONICAL RECIPES
+- **FIRE-AT-SELF (simplest)** — designer "at this beat, fire OnX at this thing": `routeTo` intValue `4` (Self),
+  `conditionEvent` objectReferenceValue = discovered event asset, `value` intValue `1`. The bound entity receives at the clip's
+  start edge.
+- **ROUTED** — designer "fire at the enemy / owner / target": `routeTo` = `Target`/`Owner`/`Source`/`Custom` through the
+  binding's `Targets` (the slot MUST be assigned, else silent total loss).
+- **ROUTED VIA LINK** — designer "fire at whatever it's linked to": add `routeLink` objectReferenceValue = discovered
+  `EntityLinkSchema` to redirect via the link map; a missed hunt fires at routeTo (path 4 fallback).
+- **ACCUMULATE** — designer "land N at once": N clips, same key/entity/start → ONE event with the summed value. Never 0, never
+  sums of 0.
 
-One logical change per exec block; print `PRE|` captures before mutating (protocol §2), save in-block, verify fresh (§7).
+## 5. WORKED EXAMPLE DELTA (vex-ee training stage) — example, rediscover never assume
 
-**4.1 Create timeline + event track + clips, then wire the director:**
+Atop the shared stage (`unity-timeline-track-authoring` §5: project `/home/i/GitHub/vex-ee`, parent `Main Scene.unity`, SubScene
+`Main Sub Scene.unity`, `Stage_Director` the only director). Track-specific delta:
 
-```csharp
-// ---- parameters (discovered in §3 / chosen with designer) ----
-var parentScenePath = "<DISCOVERED>"; var subScenePath = "<DISCOVERED>";
-var directorGoName  = "<DISCOVERED>"; var bindTargetPath = "<DISCOVERED>"; // carries TargetsAuthoring
-var eventAssetPath  = "<DISCOVERED>"; var assetFolder = "<CHOSEN>"; var assetPath = assetFolder + "/<Name>.playable"; // event asset §3.4, NEVER created
-
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    // CAPTURE (print + journal): PRE|folderExisted=<bool> PRE|assetExisted=<bool>
-    var folderExisted = UnityEditor.AssetDatabase.IsValidFolder(assetFolder);
-    var timeline = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.Timeline.TimelineAsset>();
-    UnityEditor.AssetDatabase.CreateAsset(timeline, assetPath);
-    var track = timeline.CreateTrack(/* §3.1 track type */, null, "<trackName>");
-    var eventAsset = UnityEditor.AssetDatabase.LoadMainAssetAtPath(eventAssetPath);
-
-    // FIRE-AT-SELF (simplest): routeTo=Self, value=1 — the bound entity receives at the clip's start
-    //   edge, the ONLY timing that matters.
-    // ROUTED: routeTo=Target/Owner/Source/Custom through the binding's Targets (slot must be assigned!);
-    //   + routeLink=<discovered EntityLinkSchema> to redirect via the link map; a missed hunt fires at routeTo.
-    // ACCUMULATE: N clips, same key/entity/start -> ONE event with the summed value. Never 0, never sums of 0.
-    var clip = track.CreateClip(/* TimelineEssenceEventClip type */);
-    clip.start = 1; clip.duration = 0.5; clip.displayName = "<clipName>"; // duration irrelevant
-    var so = new UnityEditor.SerializedObject((UnityEngine.Object)clip.asset);
-    so.FindProperty("conditionEvent").objectReferenceValue = eventAsset; so.FindProperty("routeTo").intValue = 4; // Self
-    so.FindProperty("value").intValue = 1;             // never 0
-    so.ApplyModifiedPropertiesWithoutUndo();
-    UnityEditor.AssetDatabase.SaveAssets();
-
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    // CAPTURE (print + journal) BEFORE mutating: PRE|playableAsset=<asset path or null>
-    //   and PRE|binding|<each output track of the CURRENT asset>|<GetGenericBinding value>
-    var bindComp = UnityEngine.GameObject.Find(bindTargetPath).GetComponent<BovineLabs.Reaction.Authoring.Core.TargetsAuthoring>();  // the COMPONENT
-    director.playableAsset = timeline;
-    director.SetGenericBinding(track, bindComp);
-    UnityEditor.EditorUtility.SetDirty(director); UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "OK|" + assetPath;
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene); UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
-
-## 5. WORKED EXAMPLE (vex-ee training stage) — example environment; rediscover, never assume
-
-- Project: `/home/i/GitHub/vex-ee` (`dataPath=/home/i/GitHub/vex-ee/Assets`); parent scene `Assets/Scenes/Main Scene.unity`;
-  SubScene `Assets/Scenes/Main Sub Scene.unity`; `Stage_Director` (PlayableDirector + TimelineReferenceAuthoring, the only
-  director); `Stage_Actor` carries `TargetsAuthoring` (Target=Stage_Target) AND `EntityLinkSource` (Root=Stage_LinkRoot);
-  `Stage_LinkRoot` bakes `EntityLinkEntry` `{Key=10, Target=Stage_Actor}`.
+- `Stage_Actor` carries `TargetsAuthoring` (Target=Stage_Target) AND `EntityLinkSource` (Root=Stage_LinkRoot); `Stage_LinkRoot`
+  bakes `EntityLinkEntry` `{Key=10, Target=Stage_Actor}`.
 - Event assets: **152** `ConditionEventObject`s under `Assets/Settings/Schemas/Events/` (curriculum said 156 — drifted;
-  re-count). Innocuous choice `OnGrabCompleted.asset`, **key 94**, guid `88e814b9160342b7a8cd01be0478c306`. Link schema
-  `Schema_Actor` guid `3b375c42affc2917f956d01310d31894`, id=10.
+  re-count). Choice `OnGrabCompleted.asset`, **key 94**, guid `88e814b9160342b7a8cd01be0478c306`. Link schema `Schema_Actor`
+  guid `3b375c42affc2917f956d01310d31894`, id=10.
 - Asset built (lesson 11): `Assets/Training/11-timeline-essence-event-track/EssenceEventMastery.playable` — one track
   `EssenceEventTrack`, clips A_FireAtSelf (1–1.5s, Self, value=1), B_FireViaLink (3–3.5s, Target, routeLink=Schema_Actor,
   value=1), C_Accumulate (3–3.5s, Target, value=2, overlapping B on the same track).
 - Resolver demos: A → Stage_Actor. B demonstrates **fallback path 4, not link-win 3**: routeTo → Stage_Target (no
-  `EntityLinkSource`/`EntityLinkEntry`) → hunt fails → Stage_Target receives anyway. (Link-win here: `routeTo=Self` —
+  `EntityLinkSource`/`EntityLinkEntry`) → hunt fails → Stage_Target receives anyway. (Link-win path needs `routeTo=Self` —
   Stage_Actor → Stage_LinkRoot → `{10 → Stage_Actor}`.) B+C same frame at Stage_Target → ONE `Trigger(OnGrabCompleted, 3)`.
-- Wiring: `EssenceEventTrack → Stage_Actor (TargetsAuthoring)`; binding table grew 8 → **9** (prior 8 preserved — tables key
-  by track asset, surviving playableAsset swaps); director restored to
-  `Assets/Training/01-transform-position-track/PositionMastery.playable`.
-- Known pre-existing console baseline: UnityCliConnector HTTP server start, PerformanceTesting
-  IPrebuildSetup/IPostBuildCleanup, TestResults.xml save, lessons 08–10 `[Worker2]` EntityLinks bake errors.
+- Wiring: `EssenceEventTrack → Stage_Actor (TargetsAuthoring)`; binding table grew 8 → **9** (prior 8 preserved); director
+  restored to `Assets/Training/01-transform-position-track/PositionMastery.playable`.
 
-## 6. UNDO APPENDIX
+## 6. UNDO + 7. VERIFICATION
 
-Runtime note: the effect is **transient by construction** — the consumer clears the buffer the same frame, the condition bit
-is masked off; NEVER runtime state to compensate, even in worlds that played the timeline. Undo is purely the authoring
-artifacts:
+Undo per `unity-timeline-track-authoring` §3, verify per its §4. **Runtime note**: the effect is **transient by
+construction** — the consumer clears the buffer the same frame, the condition bit is masked off; NEVER runtime state to
+compensate, even in worlds that played the timeline. Undo is purely the §3 authoring artifacts (asset, possible folder,
+`director.playableAsset`, the added binding entry); no scene values, event assets, or Reaction components are ever changed
+(event reuse mandatory; the listening side is another specialist).
 
-Artifact inventory for one run of §4 (vex-ee instance shown in §5):
-1. Created asset `<assetPath>` (.playable; `DeleteAsset` removes the track/clip sub-assets with the file).
-2. Possibly-created folder(s) `<assetFolder>` (only if `PRE|folderExisted=false`).
-3. Mutated `director.playableAsset` (vex-ee lesson 11: `EXPECTED:` previously `PositionMastery.playable` — the report proves
-   the restored END state but never prints the pre-wiring value; capture it per §3.5).
-4. Added generic binding entry for the new track in the SubScene file (vex-ee: table 8 → 9; `EXPECTED:` the prior 8 entries
-   were counted, not itemized, pre-wiring — capture the full table per §3.5).
-5. No scene values, event assets, or Reaction components changed (event reuse mandatory; listening side = another specialist).
-
-ORDER: restore the director FIRST (so nothing references the asset), THEN delete the asset, THEN restore other captured values
-— deleting first leaves a dangling `{fileID: 0}` reference and destroys the track objects `ClearGenericBinding` needs.
-
-Journal entry templates (protocol §5 — fill from YOUR captures, reverse order):
-
-```csharp
-// UNDO-1: restore director's captured playableAsset + binding table (SubScene bracket)
-var parentScenePath = "<CAPTURED>"; var subScenePath = "<CAPTURED>"; var directorGoName = "<CAPTURED>"; var assetPath = "<CAPTURED>";
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    var myAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Timeline.TimelineAsset>(assetPath);
-    foreach (var tr in myAsset.GetOutputTracks()) director.ClearGenericBinding(tr);   // entries I added for MY tracks
-    // restore each CAPTURED binding (PRE|binding| lines): reload the PREVIOUS playable asset by captured path, match
-    // tracks by name/index, re-find bound objects by captured hierarchy path, SetGenericBinding(prevTrack, boundComponent).
-    director.playableAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Playables.PlayableAsset>("<CAPTURED pre path>"); // CAPTURED value (or null if captured null), never "default"
-    UnityEditor.EditorUtility.SetDirty(director); UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "UNDONE|director restored";
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene); UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
-
-```csharp
-// UNDO-2: delete the created .playable (+ folder, only if PRE|folderExisted=false and now empty)
-var assetPath = "<CAPTURED>"; var assetFolder = "<CAPTURED>"; var folderExisted = false; // <CAPTURED>
-var ok = UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-if (!folderExisted && UnityEditor.AssetDatabase.FindAssets("", new[]{ assetFolder }).Length == 0)
-    UnityEditor.AssetDatabase.DeleteAsset(assetFolder);
-return "UNDONE|deleted=" + ok + "|" + assetPath;
-```
-
-```csharp
-// UNDO-3: restore any other captured scene values — normally none beyond UNDO-1 (transient runtime, no
-// scene/asset mutations besides the director); include only entries your own journal recorded.
-```
-
-UNDO-4 (verify, fresh load — protocol §7): reload the SubScene additively; `director.playableAsset` and the binding table must
-equal the CAPTURED `PRE|` values; `AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath)` must be null; restore the
-parent scene; console clean against the project baseline.
-
-## 7. VERIFICATION PROTOCOL
-
-1. **Fresh-load asset dump**: new exec block; `LoadAssetAtPath` the `.playable`, dump every track/clip (name, start/duration,
-   `routeTo`, `routeLink`, `conditionEvent` + key, `value`). In-memory state after a save is not evidence.
-2. **Raw YAML check**: `routeTo` as byte; `conditionEvent`/`routeLink` guids present where intended (no `{fileID: 0}` for an
-   intended ref); camelCase field names; same-start overlaps survive reload.
-3. **Event-asset check**: re-dump the chosen event key live (§3.4 — keys/inventories drift; vex-ee drifted 156 → 152).
-4. **Binding check from a RELOADED SubScene**: expect `BINDING|<trackName>|bound=<bindTarget> (TargetsAuthoring)` — the
-   component, not the Transform; prior entries intact.
-5. **Parent-scene restore**: end with `sceneCount=1`, `scene[0]=<parentScenePath>|loaded=True|active=True|dirty=False`.
-6. **Console**: nothing new beyond the project baseline (§5); NO errors even when misconfigured — silence expected, not evidence.
+Track-specific verification additions to the §4 protocol:
+- §4.1 asset dump: include `routeTo`, `routeLink`, `conditionEvent` + key, `value` per clip.
+- §4.2 YAML: `routeTo` as a byte; `conditionEvent`/`routeLink` guids present where intended (no `{fileID: 0}`); same-start
+  overlaps survive reload.
+- Add an **event-asset re-check**: re-dump the chosen event key live (keys/inventories drift; vex-ee drifted 156 → 152).
+- §4 console: NO errors even when misconfigured — silence is expected, NOT evidence (every guard is silent).

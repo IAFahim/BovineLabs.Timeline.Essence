@@ -1,33 +1,39 @@
 ---
 name: unity-track-essence-stat
-description: Master of TimelineEssenceStatTrack + TimelineEssenceStatClip (package BovineLabs.Timeline.Essence) — while-active stat modifiers (add-on-enter/remove-on-exit by clip identity), the ×100 fixed-point int-Added truth, and the formula Σadded×(1+Σincreased)×Π(1+more). Portable to any project containing the package; worked example from vex-ee. Use when a designer asks "during this clip, buff/nerf a stat".
+description: Master of TimelineEssenceStatTrack + TimelineEssenceStatClip (package BovineLabs.Timeline.Essence) — while-active stat modifiers (add-on-enter/remove-on-exit by clip identity), the ×100 fixed-point int-Added truth, and the formula Σadded×(1+Σincreased)×Π(1+more). Portable to any project containing the package; worked example from vex-ee.
 ---
 
 # TimelineEssenceStatTrack specialist
 
 ## 1. SCOPE
 
-You are the specialist for **`TimelineEssenceStatTrack`** and **`TimelineEssenceStatClip`** from the package
+You are the specialist for **`TimelineEssenceStatTrack`** + **`TimelineEssenceStatClip`** from package
 `BovineLabs.Timeline.Essence`, namespace `BovineLabs.Timeline.Essence.Authoring`. Scope: exactly this track — one clip = one
 **while-active** `StatModifier` (tagged with its own clip entity as `SourceEntity`) appended to the resolved entity's
 `StatModifiers` buffer on activation and removed — exactly that one — on deactivation. Duration IS the effect window. This
 topic **closes the Essence triad**: family fundamentals live in `unity-track-essence-event` (resolver semantics, all-silent
-guard matrix, dead-`RouteLinkKey`-on-Stat — this skill is its third confirmation); stage construction belongs to
-`unity-stage-foundations`. Triad: events = transient signals, intrinsics = permanent integer counters, **stats = while-active
-float modifiers (THIS — the only self-reverting track in the family)**. Behave per unity-agent-protocol; operate the editor
-per unity-cli.
+guard matrix, dead-`RouteLinkKey`-on-Stat); stage construction belongs to `unity-stage-foundations`. Triad: events =
+transient signals, intrinsics = permanent integer counters, **stats = while-active float modifiers (THIS — the only
+self-reverting track in the family)**.
+
+Operate per `unity-timeline-track-authoring`; behave per `unity-agent-protocol`; use the editor per `unity-cli`.
 
 ## 2. PORTABLE SEMANTICS
 
-True in ANY project containing `BovineLabs.Timeline.Essence` (plus its Essence and Reaction dependencies). Provenance tags =
+True in ANY project containing `BovineLabs.Timeline.Essence` (plus its Essence + Reaction dependencies). Provenance tags =
 where PROVEN, not where it applies. (All verified vex-ee 2026-06 via reflection dumps, package-source reads, raw YAML,
 fresh-load read-backs, one real forced SubScene bake — all `unity-cli exec`, no play mode; runtime claims source-derived.)
 
+### Type facts
+
 | Type | Base | Facts |
 |---|---|---|
-| `TimelineEssenceStatTrack` | `DOTSTrack` | sealed, EMPTY body. `[TrackClipType(TimelineEssenceStatClip)]`, `[TrackBindingType(BovineLabs.Reaction.Authoring.Core.TargetsAuthoring)]`, `[TrackColor(0.2,0.9,0.4)]`, `[DisplayName("BovineLabs/Essence/Timeline Stat")]` |
+| `TimelineEssenceStatTrack` | `DOTSTrack` | sealed, EMPTY body. `[TrackClipType(TimelineEssenceStatClip)]`, **`[TrackBindingType(BovineLabs.Reaction.Authoring.Core.TargetsAuthoring)]`** (the bind target), `[TrackColor(0.2,0.9,0.4)]`, `[DisplayName("BovineLabs/Essence/Timeline Stat")]` |
 | `TimelineEssenceStatClip` | `DOTSClip` | sealed, `ClipCaps.Blending \| Looping` (COSMETIC — see traps), `duration => 1` (seed only) |
 | System | `TimelineEssenceStatSystem` | `[UpdateInGroup(TimelineComponentAnimationGroup)]`, `[UpdateAfter(typeof(EntityLinkTargetPatchSystem))]` — sees same-frame TargetPatch retargets |
+
+FullNames: `BovineLabs.Timeline.Essence.Authoring.TimelineEssenceStatTrack` / `...TimelineEssenceStatClip`, assembly
+`BovineLabs.Timeline.Essence.Authoring`.
 
 ### Clip fields — camelCase (reflection + fresh-instance defaults)
 
@@ -115,7 +121,8 @@ add.Modifier}`; receivers without a `StatModifiers` buffer are silent `continue`
 
 The receiver MUST have `StatAuthoring` with `AddStats=True` AND **`StatsCanBeModified=True`**. False removes at bake the
 **`StatModifiers` buffer, the `StatChanged` enableable, AND the `StatDefaults` blob** — `StatCalculationSystem` requires all
-three, so stats freeze at baked values and the clip is a silent runtime `continue` skip.
+three, so stats freeze at baked values and the clip is a silent runtime `continue` skip. (This is the track-specific D4
+prerequisite — verify it on the routeTo-resolved receiver, per `unity-timeline-track-authoring` §1 discovery.)
 
 ### FAMILY SUMMARY (condensed from the family-closing report)
 
@@ -126,7 +133,7 @@ SILENT EVERYWHERE at bake** — Event/Intrinsic bake THROUGH a null schema (Null
 bake; runtime silent too, except Intrinsic's one loud config-key LogError. Stat alone listens to BOTH edges — the only
 guaranteed-temporary Essence track. `routeTo` is mandatory, resolves FIRST; `routeLink` is LIVE on Event/Intrinsic, **DEAD on
 Stat** (`TryResolveTarget`, never `TryResolveLinkedTarget`; confirmed three times). Triage: a clean console proves NOTHING —
-verify YAML and schema fields directly.
+verify YAML and schema fields directly. (See siblings `unity-track-essence-event`, `unity-track-essence-intrinsic`.)
 
 ### Traps & DO/DON'T (each proven live or source-quoted, vex-ee 2026-06)
 
@@ -150,201 +157,52 @@ verify YAML and schema fields directly.
 - **DO stack percent additively, multiplicative compounding** — two +50% Increased clips = +100%, not +125%; More/Less clips
   COMPOUND (`More *=`).
 
-## 3. DISCOVERY RECIPES
+## 3. CEREMONY POINTERS
 
-Act only through `unity-cli exec` / `unity-cli console`; never the filesystem; never play mode. Follow the unity-cli Safe Loop
-on every mutation. Names below are parameters — discover them in THIS project; never assume the worked example (§5).
+- Discovery preamble + the five openers (package check, scene/SubScene, director, bind target, PRE| capture):
+  `unity-timeline-track-authoring` §1. **Track specifics:** D1 checks
+  `BovineLabs.Timeline.Essence.Authoring.TimelineEssenceStatTrack`; D4 finds the **`TargetsAuthoring`** COMPONENT (not the
+  Transform) and ALSO verifies the routeTo-resolved RECEIVER carries `StatAuthoring` with `AddStats=True` +
+  `StatsCanBeModified=True` (§2 receiver gate), any non-Self `routeTo` slot is assigned, and discovers a stat schema LIVE
+  (`AssetDatabase.FindAssets("t:StatSchemaObject")`, read each match's `key.Value` — **keys DRIFT, NEVER create a schema**;
+  guid-sweep the chosen stat for gameplay consumers first and prefer an unconsumed one unless the designer says otherwise).
+- The SubScene create-and-wire bracket: `unity-timeline-track-authoring` §2 — fill `<TRACK_TYPE>` =
+  `TimelineEssenceStatTrack`, `<CLIP_TYPE>` = `TimelineEssenceStatClip`, `<BIND_TARGET>` = `TargetsAuthoring`, set fields via
+  `SerializedObject` YAML names (`stat`, `routeTo`, `modifyType`, `value`); `clip.duration` IS the effect window (not a seed
+  cap here). Substitute one of the §4 patterns for the track-specific middle.
+- Undo appendix STRUCTURE: `unity-timeline-track-authoring` §3. Runtime note: effect is **while-active and self-reverting**
+  (SourceEntity-matched remove; scrub/stop safe) — nothing runtime to compensate; artifacts 1–4 only, no schema/StatDefaults
+  mutation.
+- Verification protocol: `unity-timeline-track-authoring` §4 — the §1 field dump = every clip's `stat`+key, `routeTo`,
+  `modifyType`, `value`; YAML check: `value` stays POSITIVE even for Subtracted/Reduced/Less (negation is bake-only), overlap
+  blend YAML is cosmetic/harmless; re-check the receiver's `StatsCanBeModified=True` and the schema key live.
 
-**3.1 Confirm the package exists (else report a missing prerequisite — protocol §6):**
-```csharp
-var t = System.Type.GetType("BovineLabs.Timeline.Essence.Authoring.TimelineEssenceStatTrack, BovineLabs.Timeline.Essence.Authoring");
-if (t == null) foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-    { t = asm.GetType("BovineLabs.Timeline.Essence.Authoring.TimelineEssenceStatTrack"); if (t != null) break; }
-return t == null ? "MISSING_PREREQUISITE|TimelineEssenceStatTrack not found - package BovineLabs.Timeline.Essence is absent" : "OK|" + t.AssemblyQualifiedName + "|dataPath=" + UnityEngine.Application.dataPath;
-```
+## 4. TRACK-SPECIFIC CLIP PATTERNS (the §2 bracket's middle)
 
-**3.2 Find the active scene + SubScene(s):** run the unity-cli First Command; record `parentScenePath` + candidate
-`subScenePath`(s).
+Author positive `value` always; Subtracted/Reduced/Less negate at bake. One clip = one while-active modifier; overlaps STACK
+(never blend); loops/scrubs re-fire cleanly.
 
-**3.3 Find PlayableDirector(s) inside the SubScene** (read-only additive open, restore parent after):
-`FindObjectsByType<PlayableDirector>(Include, None)`; print per director: hierarchy path, scene.path, playableAsset
-path-or-null, other components (DOTS timelines need a timeline-reference authoring component on the director). STATE your
-selection rule in the memory card; zero directors → protocol §6.
+- **"+N flat during the clip"** → `modifyType = Added` (0), `value = N` where **N is WHOLE** (int-truncated bake + runtime).
+  For a float-consumed stat (e.g. TimeScale), author the ×100 form: "0.25 speed" → `value = 25`.
+- **"−N flat during the clip"** → `modifyType = Subtracted` (1), `value = N` positive (bakes to negative Added).
+- **"+50% during the clip"** → `modifyType = Increased` (Additive), `value = 0.5` — stacks additively across clips. Requires a
+  whole-number Added base/default on the stat or it computes `0 × … = 0` (zero-base trap).
+- **"×0.75 during the clip"** → `modifyType = Less` (Multiplicative), `value = 0.25` (bakes negative; `Π(1+more)` compounds).
+  Use `More` for a positive multiplier (`value = 0.75` → ×1.75 factor).
 
-**3.4 Find/confirm the bind target + receiver prerequisites + stat schema.** The track binds the **`TargetsAuthoring`
-COMPONENT** (not the Transform) of a SubScene-baked object. Find candidates by component
-(`FindObjectsByType<...TargetsAuthoring>`); confirm with the designer when ambiguous. Verify the stat RECEIVER
-(routeTo-resolved) carries `StatAuthoring` with `AddStats=True` + `StatsCanBeModified=True`, and that any non-Self `routeTo`
-slot is assigned. Discover stat schemas and keys LIVE — **keys drift between projects; NEVER create schema assets, reuse the
-project's**:
-```csharp
-var sb = new System.Text.StringBuilder();
-foreach (var g in UnityEditor.AssetDatabase.FindAssets("t:StatSchemaObject")) {
-    var p = UnityEditor.AssetDatabase.GUIDToAssetPath(g);
-    var so = new UnityEditor.SerializedObject(UnityEditor.AssetDatabase.LoadMainAssetAtPath(p));
-    sb.AppendLine("STAT_SCHEMA|" + p + "|key=" + so.FindProperty("key").FindPropertyRelative("Value").intValue);
-}
-return sb.ToString();   // pick WITH the designer; prefer a stat with no gameplay consumers
-```
-Guid-sweep the chosen stat for consumers first — a gameplay-wired stat is the wrong target unless the designer says so.
+routeTo defaults to `Self` (the bound `TargetsAuthoring`'s own entity); set a discovered-as-assigned slot (e.g. `Target` = 1,
+`Source`, `Owner`) only when the designer wants the modifier to land elsewhere. `routeLink` is DEAD here — leave null.
 
-**3.5 Capture the chosen director's existing state — this is pre-state (`PRE|`)**:
-```csharp
-// PRE|playableAsset=<asset PATH or null>   via AssetDatabase.GetAssetPath(director.playableAsset)
-// PRE|binding|<i>|<track name>|<track type>|<bound object hierarchy path + component type, or null>
-//   one line per GetOutputTracks() of the CURRENT asset, via director.GetGenericBinding(track).
-// Capture the asset PATH and each track's NAME/index even when the table looks empty — they are what
-// makes the undo journal replayable (UNDO-1 reloads the old asset by path, re-binds by name/index).
-```
-Record these in the undo journal (§6) before any mutation.
+## 5. WORKED EXAMPLE DELTA (vex-ee training stage) — example; rediscover, never assume
 
-**Name resolution rule**: `GameObject.Find` misses inactive objects and is ambiguous on duplicates — confirm the chosen name
-is active and unique in the SubScene, else walk the SubScene roots to the recorded hierarchy path (or `FindObjectsByType`
-filtered by `scene`).
-
-## 4. CANONICAL RECIPES
-
-One logical change per exec block; print `PRE|` captures before mutating (protocol §2), save in-block, verify fresh (§7).
-
-**4.1 Create timeline + stat track + clips, then wire the director:**
-
-```csharp
-// ---- parameters (discovered in §3 / chosen with designer) ----
-var parentScenePath = "<DISCOVERED>"; var subScenePath = "<DISCOVERED>";              // §3.2
-var directorGoName  = "<DISCOVERED>"; var bindTargetPath = "<DISCOVERED>";            // §3.3 / §3.4 (carries TargetsAuthoring)
-var statSchemaPath  = "<DISCOVERED>"; var assetFolder = "<CHOSEN>"; var assetPath = assetFolder + "/<Name>.playable"; // schema §3.4, NEVER created
-
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    // CAPTURE (print + journal): PRE|folderExisted=<bool> PRE|assetExisted=<bool>
-    var folderExisted = UnityEditor.AssetDatabase.IsValidFolder(assetFolder); // CreateFolder missing segments if needed
-    var timeline = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.Timeline.TimelineAsset>();
-    UnityEditor.AssetDatabase.CreateAsset(timeline, assetPath);
-    var track = timeline.CreateTrack(/* §3.1 track type */, null, "<trackName>");
-    var statSchema = UnityEditor.AssetDatabase.LoadMainAssetAtPath(statSchemaPath);
-
-    // FLAT buff ("+N during the clip"): Added — N must be WHOLE (int-truncated; float consumers: ×100, "0.25" = 25).
-    // PERCENT ("+50%"): Increased, value=0.5 (stacks additively). MULTIPLICATIVE ("×0.75"): Less, value=0.25 (compounds).
-    // Author positive values; Subtracted/Reduced/Less negate at bake.
-    var clip = track.CreateClip(/* TimelineEssenceStatClip type */);
-    clip.start = 0; clip.duration = 3; clip.displayName = "<clipName>"; // duration IS the effect window
-    var so = new UnityEditor.SerializedObject((UnityEngine.Object)clip.asset);
-    so.FindProperty("stat").objectReferenceValue = statSchema; so.FindProperty("routeTo").intValue = 4; // Self - or a DISCOVERED-as-assigned slot
-    so.FindProperty("modifyType").intValue = 0; so.FindProperty("value").floatValue = 2f; // Added (§2 table); <CHOSEN>
-    so.ApplyModifiedPropertiesWithoutUndo();
-    UnityEditor.AssetDatabase.SaveAssets();
-
-    // Wire the director (binding table lives in the SCENE file)
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    // CAPTURE (print + journal) BEFORE mutating: PRE|playableAsset=<asset path or null>
-    //   and PRE|binding|<each output track of the CURRENT asset>|<GetGenericBinding value>
-    var bindComp = UnityEngine.GameObject.Find(bindTargetPath).GetComponent<BovineLabs.Reaction.Authoring.Core.TargetsAuthoring>();   // the COMPONENT, not Transform
-    director.playableAsset = timeline;
-    director.SetGenericBinding(track, bindComp);
-    UnityEditor.EditorUtility.SetDirty(director); UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "OK|" + assetPath;
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene); UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
-
-Values are example choices, not package constants; overlaps stack (never blend); loops/scrubs re-fire cleanly. Verify per §7
-in SEPARATE blocks.
-
-## 5. WORKED EXAMPLE (vex-ee training stage) — example environment; rediscover, never assume
-
-- Project: `/home/i/GitHub/vex-ee` (`dataPath=/home/i/GitHub/vex-ee/Assets`); parent scene `Assets/Scenes/Main Scene.unity`;
-  SubScene `Assets/Scenes/Main Sub Scene.unity`. Stage: `Stage_Director` (PlayableDirector + TimelineReferenceAuthoring, the
-  only director); receiver `Stage_Actor` (TargetsAuthoring + StatAuthoring: `AddStats=True`, `StatsCanBeModified=True`,
-  `StatDefaults[0] = {SlowMo, Added, 0.25}` from lesson 04).
-- Schemas: **114** `StatSchemaObject` assets under `Assets/Settings/Schemas/Stats/`; demo stat `SlowMo.asset`, **key 94**.
-  `EntityLinkSchema` `Schema_Actor` guid `3b375c42affc2917f956d01310d31894`, id=10.
-- Asset built in training (lesson 13): `Assets/Training/13-timeline-essence-stat-track/StatMastery.playable` — one track
-  `StatTrack`, clips A_Plus2Flat (0–3s, Added, value=2), B_Increased50pct (1–4s, Increased, value=0.5, overlapping A),
-  C_Less25pct (5–6s, Less, value=0.25, routeLink=Schema_Actor kept as living documentation of the dead key); all
-  `stat=SlowMo`, `routeTo=Self`. A/B carry auto-generated blend YAML (cosmetic, harmless).
-- Wiring: binding `StatTrack → Stage_Actor (TargetsAuthoring)`; the director's scene-binding table grew 10 → **11** (prior 10
-  intact — tables are keyed by track asset and survive playableAsset swaps); director restored to
-  `Assets/Training/01-transform-position-track/PositionMastery.playable`.
-- Formula walkthrough on this stage (base `{SlowMo, Added, 0.25}` contributes `(int)0.25` = **0**): 0–1s A only → **2.0**;
-  1–3s A+B → `(0+2)×(1+0.5)×1` = **3.0 — NOT 3.375** (the naive "(0.25+2)×1.5" is wrong: the default truncates to 0 at bake);
-  3–4s B only → **0**; 5–6s C only → **0** (zero-base trap). Family record correction: the lesson-04 "vaccine" `{SlowMo,
-  Added, 0.25}` puts key 94 in the buffer but computes `0 × 1 / 100 = 0` — frozen timeline by another road; **"0.25 speed"
-  must be authored as Value = 25**.
-- Known pre-existing console baseline: UnityCliConnector HTTP server start, PerformanceTesting
-  IPrebuildSetup/IPostBuildCleanup, TestResults.xml save, lessons 08–10 `[Worker2]` EntityLinks bake errors.
-
-## 6. UNDO APPENDIX
-
-Runtime note: the effect is **while-active and self-reverting** (SourceEntity-matched remove; scrub/stop safe) — no lingering
-runtime stat state to compensate; the workflow never enters play mode. Undo is purely the authoring artifacts:
-
-Artifact inventory for one run of §4 (vex-ee instance shown in §5):
-1. Created asset `<assetPath>` (.playable; `DeleteAsset` removes the track/clip sub-assets with the file).
-2. Possibly-created folder(s) `<assetFolder>` (only if `PRE|folderExisted=false`).
-3. Mutated `director.playableAsset` (vex-ee lesson 13: captured pre value `PositionMastery.playable`, printed in the report's
-   environment block).
-4. Added generic binding entry for the new track in the SubScene file (vex-ee: table 10 → 11; prior 10 entries' names verified
-   intact; `EXPECTED:` their bound-object values were not printed pre-wiring — capture the full table per §3.5).
-5. No other scene values changed; no schema asset was created or modified (schema reuse is mandatory).
-
-ORDER: restore the director FIRST (so nothing references the asset), THEN delete the asset, THEN restore other captured values
-— deleting first leaves a dangling `{fileID: 0}` reference and destroys the track objects `ClearGenericBinding` needs.
-
-Journal entry templates (protocol §5 — fill from YOUR captures, reverse order):
-
-```csharp
-// UNDO-1: restore director's captured playableAsset + binding table (SubScene bracket)
-var parentScenePath = "<CAPTURED>"; var subScenePath = "<CAPTURED>"; var directorGoName = "<CAPTURED>"; var assetPath = "<CAPTURED>";
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    var myAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Timeline.TimelineAsset>(assetPath);
-    foreach (var tr in myAsset.GetOutputTracks()) director.ClearGenericBinding(tr);   // entries I added for MY tracks
-    // restore each CAPTURED binding (PRE|binding| lines): reload the PREVIOUS playable asset by captured path, match
-    // tracks by name/index, re-find bound objects by captured hierarchy path, SetGenericBinding(prevTrack, boundComponent).
-    director.playableAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Playables.PlayableAsset>("<CAPTURED pre path>"); // CAPTURED value (or null if captured null), never "default"
-    UnityEditor.EditorUtility.SetDirty(director); UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "UNDONE|director restored";
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene); UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
-
-```csharp
-// UNDO-2: delete the created .playable (+ folder, only if PRE|folderExisted=false and now empty)
-var assetPath = "<CAPTURED>"; var assetFolder = "<CAPTURED>"; var folderExisted = false; // <CAPTURED>
-var ok = UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-if (!folderExisted && UnityEditor.AssetDatabase.FindAssets("", new[]{ assetFolder }).Length == 0)
-    UnityEditor.AssetDatabase.DeleteAsset(assetFolder);
-return "UNDONE|deleted=" + ok + "|" + assetPath;
-```
-
-```csharp
-// UNDO-3: restore any other captured scene values — normally none beyond UNDO-1 (the track never mutates
-// editor objects, schemas, or StatDefaults); include only entries your own journal recorded.
-```
-
-UNDO-4 (verify, fresh load — protocol §7): reload the SubScene additively; `director.playableAsset` and the binding table must
-equal the CAPTURED `PRE|` values; `AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath)` must be null; restore the
-parent scene; console clean against the project baseline.
-
-## 7. VERIFICATION PROTOCOL
-
-1. **Fresh-load asset dump**: new exec block; `LoadAssetAtPath` the `.playable`, dump every track/clip (name, start/duration,
-   `stat` + key, `routeTo`, `modifyType`, `value`). In-memory state after a save is not evidence.
-2. **Raw YAML check**: `modifyType` byte per §2 table; `value` POSITIVE even for Subtracted/Reduced/Less (negation is
-   bake-only); `stat` guid present (no `{fileID: 0}`); overlap blend YAML cosmetic — expected, harmless.
-3. **Stat-side checks**: re-dump the chosen schema's key live (§3.4 — ids and inventories drift); receiver
-   `StatsCanBeModified=True`.
-4. **Binding check from a RELOADED SubScene**: expect `BINDING|<trackName>|bound=<bindTarget> (TargetsAuthoring)` — the
-   component, not the Transform; prior entries intact.
-5. **Parent-scene restore**: end with `sceneCount=1`, `scene[0]=<parentScenePath>|loaded=True|active=True|dirty=False`.
-6. **Console**: `unity-cli console --filter error` shows nothing new beyond the project's known baseline (vex-ee baseline in
-   §5). This track is bake-silent even when misconfigured — silence is expected, not evidence.
+Beyond the shared stage in `unity-timeline-track-authoring` §5: lesson 13 built
+`Assets/Training/13-timeline-essence-stat-track/StatMastery.playable` — one track `StatTrack`, clips A_Plus2Flat (0–3s,
+Added, value=2), B_Increased50pct (1–4s, Increased, value=0.5, overlapping A), C_Less25pct (5–6s, Less, value=0.25,
+routeLink=Schema_Actor kept as living documentation of the dead key); all `stat=SlowMo`, `routeTo=Self`. Receiver
+`Stage_Actor` carries `StatAuthoring` `AddStats=True`/`StatsCanBeModified=True` with `StatDefaults[0] = {SlowMo, Added, 0.25}`
+(from lesson 04). Schema: `SlowMo.asset` under `Assets/Settings/Schemas/Stats/`, **key 94** (114 StatSchemaObjects total).
+Binding `StatTrack → Stage_Actor (TargetsAuthoring)`; director's scene-binding table grew 10 → 11 (prior intact), then
+restored to `PositionMastery.playable`. **Formula walkthrough** (base `{SlowMo, Added, 0.25}` contributes `(int)0.25` = **0**):
+0–1s A only → **2.0**; 1–3s A+B → `(0+2)×(1+0.5)×1` = **3.0 — NOT 3.375** (the default truncates to 0 at bake); 3–4s B only →
+**0**; 5–6s C only → **0** (zero-base trap). The lesson-04 `{SlowMo, Added, 0.25}` "vaccine" computes `0 × 1 / 100 = 0` — to
+get "0.25 speed" you must author `value = 25`.
