@@ -30,6 +30,7 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeComponentLookup<Targets> targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
+        private IntrinsicWriter.SingletonData intrinsicWriterSingletonData;
         private IntrinsicWriter.Lookup writers;
 
         [BurstCompile]
@@ -44,6 +45,7 @@ namespace BovineLabs.Timeline.Essence
             targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            intrinsicWriterSingletonData.Create(ref state);
             writers.Create(ref state);
         }
 
@@ -60,7 +62,7 @@ namespace BovineLabs.Timeline.Essence
             targetsLookup.Update(ref state);
             linkSourceLookup.Update(ref state);
             linkLookup.Update(ref state);
-            writers.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
+            writers.Update(ref state, intrinsicWriterSingletonData);
             uniqueKeySet.Clear();
 
             state.Dependency = new GatherJob

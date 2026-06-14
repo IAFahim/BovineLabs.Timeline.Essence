@@ -28,6 +28,7 @@ namespace BovineLabs.Essence.Actions
         private NativeList<Entity> uniqueKeys;
         private NativeList<Entity> uniqueEventKeys;
         private BufferLookup<Stat> statsLookup;
+        private IntrinsicWriter.SingletonData intrinsicWriterSingletonData;
         private IntrinsicWriter.Lookup intrinsicWriters;
         private ConditionEventWriter.Lookup eventWriters;
 
@@ -43,6 +44,7 @@ namespace BovineLabs.Essence.Actions
             uniqueEventKeys = new NativeList<Entity>(64, Allocator.Persistent);
 
             statsLookup = state.GetBufferLookup<Stat>(true);
+            intrinsicWriterSingletonData.Create(ref state);
             intrinsicWriters.Create(ref state);
             eventWriters.Create(ref state);
         }
@@ -61,7 +63,7 @@ namespace BovineLabs.Essence.Actions
         public void OnUpdate(ref SystemState state)
         {
             statsLookup.Update(ref state);
-            intrinsicWriters.Update(ref state, SystemAPI.GetSingleton<EssenceConfig>());
+            intrinsicWriters.Update(ref state, intrinsicWriterSingletonData);
             eventWriters.Update(ref state);
             intrinsicTargets.Clear();
             eventTargets.Clear();
