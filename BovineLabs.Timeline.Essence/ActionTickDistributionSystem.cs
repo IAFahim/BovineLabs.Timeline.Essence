@@ -205,7 +205,6 @@ namespace BovineLabs.Essence.Actions
             }
         }
 
-        // Intentionally parallel structure to GetKeysJob
         [BurstCompile]
         private struct GetEventKeysJob : IJob
         {

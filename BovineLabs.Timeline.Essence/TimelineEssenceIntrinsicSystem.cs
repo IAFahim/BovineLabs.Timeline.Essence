@@ -115,7 +115,6 @@ namespace BovineLabs.Timeline.Essence
             }
         }
 
-        // ... (GetKeysJob, ApplyJob, and IntrinsicAmount stay the same as before) ...
         [BurstCompile]
         private struct GetKeysJob : IJob
         {
