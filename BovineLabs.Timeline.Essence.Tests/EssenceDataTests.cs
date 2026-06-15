@@ -1,5 +1,4 @@
 using BovineLabs.Essence.Data;
-using BovineLabs.Essence.Data.Actions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Essence.Data;
@@ -10,67 +9,6 @@ namespace BovineLabs.Timeline.Essence.Tests
 {
     public class EssenceDataTests
     {
-        [Test]
-        public void ActionTickDistributionState_Defaults()
-        {
-            var state = default(ActionTickDistributionState);
-            Assert.AreEqual(0f, state.ElapsedTime);
-            Assert.AreEqual(0, state.AppliedTicks);
-            Assert.IsFalse(state.EndFired);
-        }
-
-        [Test]
-        public void ActionTickDistributionState_IsValueType()
-        {
-            Assert.IsTrue(typeof(ActionTickDistributionState).IsValueType);
-        }
-
-        [Test]
-        public void ActionTickDistributionState_ImplementsIComponentData()
-        {
-            Assert.IsTrue(typeof(IComponentData).IsAssignableFrom(typeof(ActionTickDistributionState)));
-        }
-
-        [Test]
-        public void ActionTickDistributionState_SetValues()
-        {
-            var state = new ActionTickDistributionState
-            {
-                ElapsedTime = 1.5f,
-                AppliedTicks = 3,
-                EndFired = true
-            };
-            Assert.AreEqual(1.5f, state.ElapsedTime);
-            Assert.AreEqual(3, state.AppliedTicks);
-            Assert.IsTrue(state.EndFired);
-        }
-
-        [Test]
-        public void ActionTickDistribution_IsValueType()
-        {
-            Assert.IsTrue(typeof(ActionTickDistribution).IsValueType);
-        }
-
-        [Test]
-        public void ActionTickDistribution_ImplementsIComponentData()
-        {
-            Assert.IsTrue(typeof(IComponentData).IsAssignableFrom(typeof(ActionTickDistribution)));
-        }
-
-        [Test]
-        public void ActionTickDistribution_Defaults()
-        {
-            var data = default(ActionTickDistribution);
-            Assert.IsFalse(data.Curve.IsCreated);
-            Assert.AreEqual(default(Target), data.From);
-            Assert.AreEqual(default(StatKey), data.TicPerSecond);
-            Assert.AreEqual(default(StatKey), data.TicDuration);
-            Assert.AreEqual(default(ConditionKey), data.OnEnd);
-            Assert.AreEqual(default(Target), data.To);
-            Assert.AreEqual(default(IntrinsicKey), data.TickStore);
-            Assert.AreEqual(default(ConditionKey), data.OnTic);
-        }
-
         [Test]
         public void TimelineEssenceEventData_Defaults()
         {
