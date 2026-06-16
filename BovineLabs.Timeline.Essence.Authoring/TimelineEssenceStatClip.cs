@@ -28,11 +28,18 @@ namespace BovineLabs.Timeline.Essence.Authoring
         public float value;
 
         public override double duration => 1;
-        public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
+
+        // No Blending: this clip is edge-triggered (modifier added on enter, removed on exit by identity);
+        // the system never reads ClipWeight, so a blend handle would be a UI control that does nothing.
+        public ClipCaps clipCaps => ClipCaps.Looping;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (stat == null) return;
+            if (stat == null)
+            {
+                Debug.LogError($"{nameof(TimelineEssenceStatClip)} '{name}' has no Stat assigned; the clip will not modify any stat.", this);
+                return;
+            }
 
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 

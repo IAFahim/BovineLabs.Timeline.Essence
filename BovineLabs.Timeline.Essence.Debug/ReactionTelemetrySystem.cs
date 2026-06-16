@@ -112,7 +112,11 @@ namespace BovineLabs.Reaction.Debug
             foreach (var (events, history) in
                      SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
             {
-                history.Cull(time, RetentionWindow);
+                // Records are stored newest-first (Insert(0) below), so the oldest sit at the END.
+                // The shared Cull evicts from the FRONT (newest) and therefore never removes anything
+                // here, growing the buffer unbounded — evict the stale oldest entries from the end instead.
+                while (history.Length > 0 && time - history[history.Length - 1].Timestamp > RetentionWindow)
+                    history.RemoveAt(history.Length - 1);
 
                 if (events.Length == 0) continue;
 
