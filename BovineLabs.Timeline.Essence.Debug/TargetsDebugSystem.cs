@@ -65,13 +65,35 @@ namespace BovineLabs.Essence.Debug
                     out var drawer))
                 return;
 
+            var names = new NativeHashMap<Entity, FixedString64Bytes>(64, Allocator.TempJob);
+            foreach (var (targetsRO, _) in SystemAPI.Query<RefRO<Targets>>().WithEntityAccess())
+            {
+                var t = targetsRO.ValueRO;
+                AddName(ref state, ref names, t.Owner);
+                AddName(ref state, ref names, t.Source);
+                AddName(ref state, ref names, t.Target);
+                AddName(ref state, ref names, t.Custom);
+            }
+
             state.Dependency = new DrawTargetsJob
             {
                 Drawer = drawer,
                 LtwLookup = _ltwLookup,
                 LocalTransformLookup = _localTransformLookup,
-                ParentLookup = _parentLookup
+                ParentLookup = _parentLookup,
+                Names = names
             }.Schedule(state.Dependency);
+
+            names.Dispose(state.Dependency);
+        }
+
+        private static void AddName(ref SystemState state, ref NativeHashMap<Entity, FixedString64Bytes> names, Entity e)
+        {
+            if (e == Entity.Null || names.ContainsKey(e))
+                return;
+
+            state.EntityManager.GetName(e, out FixedString64Bytes name);
+            names.Add(e, name);
         }
 
         [BurstCompile]
@@ -81,6 +103,7 @@ namespace BovineLabs.Essence.Debug
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Parent> ParentLookup;
+            [ReadOnly] public NativeHashMap<Entity, FixedString64Bytes> Names;
 
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
@@ -102,35 +125,24 @@ namespace BovineLabs.Essence.Debug
                 var fsOwner = new FixedString32Bytes();
                 fsOwner.Append('O');
                 fsOwner.Append('w');
-                fsOwner.Append('n');
-                fsOwner.Append('e');
                 fsOwner.Append('r');
                 DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Owner, fsOwner, ColorOwner, 0,
                     ref nullCount);
                 var fsSource = new FixedString32Bytes();
                 fsSource.Append('S');
-                fsSource.Append('o');
-                fsSource.Append('u');
                 fsSource.Append('r');
                 fsSource.Append('c');
-                fsSource.Append('e');
                 DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Source, fsSource, ColorSource,
                     1, ref nullCount);
                 var fsTarget = new FixedString32Bytes();
                 fsTarget.Append('T');
-                fsTarget.Append('a');
-                fsTarget.Append('r');
                 fsTarget.Append('g');
-                fsTarget.Append('e');
                 fsTarget.Append('t');
                 DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Target, fsTarget, ColorTarget,
                     2, ref nullCount);
                 var fsCustom = new FixedString32Bytes();
                 fsCustom.Append('C');
-                fsCustom.Append('u');
-                fsCustom.Append('s');
                 fsCustom.Append('t');
-                fsCustom.Append('o');
                 fsCustom.Append('m');
                 DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Custom, fsCustom, ColorCustom,
                     3, ref nullCount);
@@ -163,10 +175,6 @@ namespace BovineLabs.Essence.Debug
                     msg.Append('[');
                     msg.Append(label);
                     msg.Append(' ');
-                    msg.Append('h');
-                    msg.Append('a');
-                    msg.Append('s');
-                    msg.Append(' ');
                     msg.Append('n');
                     msg.Append('o');
                     msg.Append(' ');
@@ -187,16 +195,24 @@ namespace BovineLabs.Essence.Debug
 
                 var targetPos = GetAntiJitterPosition(target, targetLtw.Position);
 
+                var display = new FixedString128Bytes();
+                display.Append(label);
+                if (Names.TryGetValue(target, out var name))
+                {
+                    display.Append("-");
+                    display.Append(name);
+                }
+
                 if (self == target || math.all(selfPos == targetPos))
                 {
-                    DrawSelfLoop(selfPos, label, color, index);
+                    DrawSelfLoop(selfPos, display, color, index);
                     return;
                 }
 
-                DrawCurvedTether(selfPos, targetPos, label, color, index);
+                DrawCurvedTether(selfPos, targetPos, display, color, index);
             }
 
-            private unsafe void DrawCurvedTether(float3 start, float3 end, FixedString32Bytes label, Color color,
+            private unsafe void DrawCurvedTether(float3 start, float3 end, FixedString128Bytes label, Color color,
                 int index)
             {
                 var distance = math.distance(start, end);
@@ -231,10 +247,10 @@ namespace BovineLabs.Essence.Debug
                 var dir = math.normalize(end - lines[lineLength - 4]);
                 Drawer.Arrow(end - dir * 0.1f, dir * 0.25f, color);
 
-                Drawer.Text32(mid + new float3(0, 0.2f, 0), label, color, 11f);
+                Drawer.Text128(mid + new float3(0, 0.2f, 0), label, color, 11f);
             }
 
-            private unsafe void DrawSelfLoop(float3 pos, FixedString32Bytes label, Color color, int index)
+            private unsafe void DrawSelfLoop(float3 pos, FixedString128Bytes label, Color color, int index)
             {
                 var height = 1.0f + index * 0.3f;
                 var spread = 0.5f + index * 0.1f;
@@ -277,7 +293,7 @@ namespace BovineLabs.Essence.Debug
                 Drawer.Arrow(pos - dir * 0.05f, dir * 0.2f, color);
 
                 var topPos = pos + new float3(0, height + 0.1f, 0);
-                Drawer.Text32(topPos, label, color, 10f);
+                Drawer.Text128(topPos, label, color, 10f);
             }
         }
     }
