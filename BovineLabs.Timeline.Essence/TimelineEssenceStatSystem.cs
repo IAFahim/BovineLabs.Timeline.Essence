@@ -147,7 +147,7 @@ namespace BovineLabs.Timeline.Essence
                         if (array[i].SourceEntity == remove.Source)
                         {
                             buffer.RemoveAtSwapBack(i);
-                            break; // 1 modifier per clip entity
+                            break;
                         }
                 }
 
