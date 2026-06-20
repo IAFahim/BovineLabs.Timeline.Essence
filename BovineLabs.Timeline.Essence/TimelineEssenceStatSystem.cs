@@ -19,16 +19,16 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceStatSystem : ISystem
     {
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
-        private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
-            linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
         }
 
         [BurstCompile]
@@ -37,16 +37,16 @@ namespace BovineLabs.Timeline.Essence
             var addStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
-            targetsLookup.Update(ref state);
-            linkSourceLookup.Update(ref state);
-            linkLookup.Update(ref state);
+            _targetsLookup.Update(ref state);
+            _linkSourceLookup.Update(ref state);
+            _linkLookup.Update(ref state);
 
             var gatherAddJob = new GatherAddJob
             {
                 Mutations = addStats.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                LinkSources = linkSourceLookup,
-                Links = linkLookup
+                TargetsLookup = _targetsLookup,
+                LinkSources = _linkSourceLookup,
+                Links = _linkLookup
             };
             var gatherRemoveJob = new GatherRemoveJob
             {

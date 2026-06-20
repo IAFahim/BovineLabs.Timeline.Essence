@@ -22,52 +22,52 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceTickSystem : ISystem
     {
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
-        private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
-        private ConditionEventWriter.Lookup eventWriters;
-        private IntrinsicWriter.SingletonData intrinsicWriterSingletonData;
-        private IntrinsicWriter.Lookup intrinsicWriters;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
+        private ConditionEventWriter.Lookup _eventWriters;
+        private IntrinsicWriter.SingletonData _intrinsicWriterSingletonData;
+        private IntrinsicWriter.Lookup _intrinsicWriters;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EssenceConfig>();
 
-            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
-            linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
-            eventWriters.Create(ref state);
-            intrinsicWriterSingletonData.Create(ref state);
-            intrinsicWriters.Create(ref state);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _eventWriters.Create(ref state);
+            _intrinsicWriterSingletonData.Create(ref state);
+            _intrinsicWriters.Create(ref state);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            targetsLookup.Update(ref state);
-            linkSourceLookup.Update(ref state);
-            linkLookup.Update(ref state);
-            eventWriters.Update(ref state);
-            intrinsicWriters.Update(ref state, intrinsicWriterSingletonData);
+            _targetsLookup.Update(ref state);
+            _linkSourceLookup.Update(ref state);
+            _linkLookup.Update(ref state);
+            _eventWriters.Update(ref state);
+            _intrinsicWriters.Update(ref state, _intrinsicWriterSingletonData);
 
             // Two single-writer jobs: IntrinsicWriter.Lookup nests a ConditionEventWriter, so it cannot share a
             // job with a standalone ConditionEventWriter.Lookup (the EventsDirty lookup would alias). Each job
             // handles one payload mode; the shared TickState write serializes them.
             state.Dependency = new EventTickJob
             {
-                TargetsLookup = targetsLookup,
-                LinkSources = linkSourceLookup,
-                Links = linkLookup,
-                EventWriters = eventWriters,
+                TargetsLookup = _targetsLookup,
+                LinkSources = _linkSourceLookup,
+                Links = _linkLookup,
+                EventWriters = _eventWriters,
             }.Schedule(state.Dependency);
 
             state.Dependency = new IntrinsicTickJob
             {
-                TargetsLookup = targetsLookup,
-                LinkSources = linkSourceLookup,
-                Links = linkLookup,
-                IntrinsicWriters = intrinsicWriters,
+                TargetsLookup = _targetsLookup,
+                LinkSources = _linkSourceLookup,
+                Links = _linkLookup,
+                IntrinsicWriters = _intrinsicWriters,
             }.Schedule(state.Dependency);
         }
 

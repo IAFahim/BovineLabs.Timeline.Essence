@@ -23,68 +23,68 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceEventSystem : ISystem
     {
-        private NativeParallelMultiHashMapFallback<Entity, EventAmount> eventChanges;
-        private NativeParallelHashSet<Entity> uniqueKeySet;
-        private NativeList<Entity> uniqueKeys;
+        private NativeParallelMultiHashMapFallback<Entity, EventAmount> _eventChanges;
+        private NativeParallelHashSet<Entity> _uniqueKeySet;
+        private NativeList<Entity> _uniqueKeys;
 
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private UnsafeComponentLookup<EntityLinkSource> linkSourceLookup;
-        private UnsafeBufferLookup<EntityLinkEntry> linkLookup;
-        private ConditionEventWriter.Lookup writers;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
+        private ConditionEventWriter.Lookup _writers;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
-            uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
-            uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
-            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
-            linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
-            writers.Create(ref state);
+            _eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
+            _uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
+            _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _writers.Create(ref state);
         }
 
         public void OnDestroy(ref SystemState state)
         {
-            eventChanges.Dispose();
-            uniqueKeySet.Dispose();
-            uniqueKeys.Dispose();
+            _eventChanges.Dispose();
+            _uniqueKeySet.Dispose();
+            _uniqueKeys.Dispose();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            targetsLookup.Update(ref state);
-            linkSourceLookup.Update(ref state);
-            linkLookup.Update(ref state);
-            writers.Update(ref state);
-            uniqueKeySet.Clear();
+            _targetsLookup.Update(ref state);
+            _linkSourceLookup.Update(ref state);
+            _linkLookup.Update(ref state);
+            _writers.Update(ref state);
+            _uniqueKeySet.Clear();
 
             state.Dependency = new GatherJob
             {
-                EventChanges = eventChanges.AsWriter(),
-                UniqueKeys = uniqueKeySet.AsParallelWriter(),
-                TargetsLookup = targetsLookup,
-                LinkSources = linkSourceLookup,
-                Links = linkLookup
+                EventChanges = _eventChanges.AsWriter(),
+                UniqueKeys = _uniqueKeySet.AsParallelWriter(),
+                TargetsLookup = _targetsLookup,
+                LinkSources = _linkSourceLookup,
+                Links = _linkLookup
             }.ScheduleParallel(state.Dependency);
 
-            state.Dependency = eventChanges.Apply(state.Dependency, out var reader);
+            state.Dependency = _eventChanges.Apply(state.Dependency, out var reader);
 
             state.Dependency = new GetKeysJob
             {
-                UniqueKeys = uniqueKeys,
-                UniqueKeySet = uniqueKeySet
+                UniqueKeys = _uniqueKeys,
+                UniqueKeySet = _uniqueKeySet
             }.Schedule(state.Dependency);
 
             state.Dependency = new ApplyJob
             {
-                Keys = uniqueKeys.AsDeferredJobArray(),
+                Keys = _uniqueKeys.AsDeferredJobArray(),
                 GroupChanges = reader,
-                Writers = writers
-            }.Schedule(uniqueKeys, 64, state.Dependency);
+                Writers = _writers
+            }.Schedule(_uniqueKeys, 64, state.Dependency);
 
-            state.Dependency = eventChanges.Clear(state.Dependency);
+            state.Dependency = _eventChanges.Clear(state.Dependency);
         }
 
         [BurstCompile]
