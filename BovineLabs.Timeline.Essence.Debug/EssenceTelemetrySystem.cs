@@ -53,8 +53,18 @@ namespace BovineLabs.Essence.Debug
         [ConfigVar("essencetelemetry.bars", true, "Show bars in telemetry debug.")]
         public static readonly SharedStatic<bool> Bars = SharedStatic<bool>.GetOrCreate<Tags.Bars>();
 
+        [ConfigVar("essencetelemetry.health-stat", "",
+            "Stat name (substring) drawn as a pulsing health beacon above the entity. Empty = off. " +
+            "Requires the telemetry visual overlay (bovinelabs.telemetry.visual-overlay).")]
+        public static readonly SharedStatic<FixedString32Bytes> HealthStat =
+            SharedStatic<FixedString32Bytes>.GetOrCreate<Tags.HealthStat>();
+
         private struct Tags
         {
+            public struct HealthStat
+            {
+            }
+
             public struct Enabled
             {
             }
@@ -134,6 +144,10 @@ namespace BovineLabs.Essence.Debug
                 ShowBars = EssenceTelemetryConfig.Bars.Data,
                 PanelSpacing = TelemetryConfig.PanelSpacing.Data,
                 UseLogFill = TelemetryConfig.LogFill.Data,
+                DrawBeacon = TelemetryVisualConfig.VisualOverlay.Data &&
+                             !EssenceTelemetryConfig.HealthStat.Data.IsEmpty,
+                HealthStat = EssenceTelemetryConfig.HealthStat.Data,
+                Time = (float)SystemAPI.Time.ElapsedTime,
                 TransformHandle = SystemAPI.GetComponentTypeHandle<LocalToWorld>(true),
                 LocalTransformHandle = SystemAPI.GetComponentTypeHandle<LocalTransform>(true),
                 ParentHandle = SystemAPI.GetComponentTypeHandle<Parent>(true),
@@ -162,6 +176,9 @@ namespace BovineLabs.Essence.Debug
             public Color IntrinsicAccent;
             public FixedString32Bytes IntrinsicFilter;
             public bool UseLogFill;
+            public bool DrawBeacon;
+            public FixedString32Bytes HealthStat;
+            public float Time;
 
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
@@ -197,6 +214,9 @@ namespace BovineLabs.Essence.Debug
                     var head = hasLocalTransform && !hasParent
                         ? localTransforms[index].Position
                         : transforms[index].Position;
+
+                    if (DrawBeacon && hasStats)
+                        DrawHealthBeacon(head, index, chunk, statBuffers[index]);
 
                     if (hasStats)
                     {
@@ -424,6 +444,33 @@ namespace BovineLabs.Essence.Debug
                     }
 
                     y = Glyph.AdvanceGroup(y);
+                }
+            }
+
+            private const float BeaconHeight = 1.9f;
+            private const float BeaconRadius = 1.5f;
+
+            // Pulsing health-colored ring above the entity, fill taken from the named stat. Opt-in: only runs
+            // when a health stat name is configured and the visual overlay is enabled.
+            private void DrawHealthBeacon(float3 head, int entityIndex, in ArchetypeChunk chunk,
+                DynamicBuffer<Stat> stats)
+            {
+                ref var names = ref DebugNames.Value.Value.StatNames;
+                var hasDefaults = chunk.Has(ref StatDefaultsHandle);
+                var defaultsArr = hasDefaults ? chunk.GetNativeArray(ref StatDefaultsHandle) : default;
+
+                foreach (var stat in stats.AsMap())
+                {
+                    var name = ResolveName(ref names, stat.Key.Value);
+                    if (name.IndexOf(HealthStat) == -1)
+                        continue;
+
+                    var fill = ComputeStatFill(stat.Key.Value, stat.Value.Value, defaultsArr, entityIndex,
+                        hasDefaults, false);
+                    var view = View.WorldFacing(Camera, head, Scale).NudgeWorld(new float3(0f, BeaconHeight, 0f));
+                    VisualGlyph.BeaconPulse(Renderer, view, 0f, 0f, BeaconRadius, Time,
+                        VisualGlyph.HealthGradient(fill));
+                    return;
                 }
             }
 
