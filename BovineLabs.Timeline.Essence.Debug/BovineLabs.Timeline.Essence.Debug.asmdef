@@ -40,7 +40,7 @@
   "precompiledReferences": [],
   "autoReferenced": false,
   "defineConstraints": [
-    "UNITY_EDITOR || BL_DEBUG"
+    "UNITY_EDITOR"
   ],
   "versionDefines": [],
   "noEngineReferences": false
