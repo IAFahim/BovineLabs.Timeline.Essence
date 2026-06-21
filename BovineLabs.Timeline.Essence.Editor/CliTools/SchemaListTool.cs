@@ -24,13 +24,15 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             public string Type { get; set; }
         }
 
+        private static readonly HashSet<string> ValidTypes = new() { "all", "stat", "intrinsic", "event" };
+
         public static object HandleCommand(JObject @params)
         {
             var p = new Params(@params);
             try
             {
                 string type = (p.OptString("type", "all") ?? "all").Trim().ToLowerInvariant();
-                if (type != "all" && type != "stat" && type != "intrinsic" && type != "event")
+                if (!ValidTypes.Contains(type))
                 {
                     throw new ToolException("BAD_VALUE", $"Unknown type '{type}'.", "Expected one of: stat, intrinsic, event, all.");
                 }
@@ -38,9 +40,9 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 var essence = EditorSettingsUtility.GetSettings<EssenceSettings>();
                 var reaction = EditorSettingsUtility.GetSettings<ReactionSettings>();
 
-                var stats = type is "all" or "stat" ? ListStats(essence) : null;
-                var intrinsics = type is "all" or "intrinsic" ? ListIntrinsics(essence) : null;
-                var events = type is "all" or "event" ? ListEvents(reaction) : null;
+                var stats = Wants(type, "stat") ? ListStats(essence) : null;
+                var intrinsics = Wants(type, "intrinsic") ? ListIntrinsics(essence) : null;
+                var events = Wants(type, "event") ? ListEvents(reaction) : null;
 
                 int count = (stats?.Count ?? 0) + (intrinsics?.Count ?? 0) + (events?.Count ?? 0);
 
@@ -50,6 +52,9 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             }
             catch (ToolException e) { return ToolEnvelope.FromException(e); }
         }
+
+        // A requested type is included when the caller asked for it explicitly or for "all".
+        private static bool Wants(string requested, string family) => requested == "all" || requested == family;
 
         private static HashSet<Object> RegisteredSet(IEnumerable<Object> registered)
         {
