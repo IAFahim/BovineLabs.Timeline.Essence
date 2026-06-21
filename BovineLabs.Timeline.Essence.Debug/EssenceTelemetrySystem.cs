@@ -219,27 +219,37 @@ namespace BovineLabs.Essence.Debug
                         DrawHealthBeacon(head, index, chunk, statBuffers[index]);
 
                     if (hasStats)
-                    {
-                        var statView = View.WorldFacing(Camera, head, Scale)
-                            .NudgeWorld(StatWorldOffset);
-                        if (hasBoth) statView = statView.Shift(-PanelSpacing * 0.5f, 0f);
-
-                        EmitStatPanel(statView, index, chunk,
-                            statBuffers[index],
-                            hasTrends ? trendBuffers[index] : default);
-                    }
+                        EmitStatsForEntity(head, index, chunk, statBuffers, trendBuffers, hasTrends, hasBoth);
 
                     if (hasIntrinsics)
-                    {
-                        var intrView = View.WorldFacing(Camera, head, Scale)
-                            .NudgeWorld(IntrinsicWorldOffset);
-                        if (hasBoth) intrView = intrView.Shift(PanelSpacing * 0.5f, 0f);
-
-                        EmitIntrinsicPanel(intrView, index, chunk,
-                            intrinsicBuffers[index],
-                            hasStats ? statBuffers[index] : default);
-                    }
+                        EmitIntrinsicsForEntity(head, index, chunk, intrinsicBuffers, statBuffers, hasStats, hasBoth);
                 }
+            }
+
+            private void EmitStatsForEntity(float3 head, int index, in ArchetypeChunk chunk,
+                BufferAccessor<Stat> statBuffers, BufferAccessor<StatTrendSample> trendBuffers,
+                bool hasTrends, bool hasBoth)
+            {
+                var statView = View.WorldFacing(Camera, head, Scale)
+                    .NudgeWorld(StatWorldOffset);
+                if (hasBoth) statView = statView.Shift(-PanelSpacing * 0.5f, 0f);
+
+                EmitStatPanel(statView, index, chunk,
+                    statBuffers[index],
+                    hasTrends ? trendBuffers[index] : default);
+            }
+
+            private void EmitIntrinsicsForEntity(float3 head, int index, in ArchetypeChunk chunk,
+                BufferAccessor<Intrinsic> intrinsicBuffers, BufferAccessor<Stat> statBuffers,
+                bool hasStats, bool hasBoth)
+            {
+                var intrView = View.WorldFacing(Camera, head, Scale)
+                    .NudgeWorld(IntrinsicWorldOffset);
+                if (hasBoth) intrView = intrView.Shift(PanelSpacing * 0.5f, 0f);
+
+                EmitIntrinsicPanel(intrView, index, chunk,
+                    intrinsicBuffers[index],
+                    hasStats ? statBuffers[index] : default);
             }
 
             private void EmitStatPanel(in View v, int entityIndex, in ArchetypeChunk chunk,

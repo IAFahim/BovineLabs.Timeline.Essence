@@ -38,59 +38,9 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 var essence = EditorSettingsUtility.GetSettings<EssenceSettings>();
                 var reaction = EditorSettingsUtility.GetSettings<ReactionSettings>();
 
-                var registeredStats = new HashSet<Object>(essence != null ? essence.StatSchemas.Cast<Object>() : Enumerable.Empty<Object>());
-                var registeredIntrinsics = new HashSet<Object>(essence != null ? essence.IntrinsicSchemas.Cast<Object>() : Enumerable.Empty<Object>());
-                var registeredEvents = new HashSet<Object>(reaction != null ? reaction.ConditionEvents.Cast<Object>() : Enumerable.Empty<Object>());
-
-                List<object> stats = null;
-                List<object> intrinsics = null;
-                List<object> events = null;
-
-                if (type is "all" or "stat")
-                {
-                    stats = Load<StatSchemaObject>().Select(s => (object)new
-                    {
-                        assetPath = AssetDatabase.GetAssetPath(s),
-                        name = s.name,
-                        key = s.Key,
-                        conditionType = s.ConditionType,
-                        isGlobal = s.IsGlobal,
-                        registered = registeredStats.Contains(s),
-                    }).ToList();
-                }
-
-                if (type is "all" or "intrinsic")
-                {
-                    intrinsics = Load<IntrinsicSchemaObject>().Select(i => (object)new
-                    {
-                        assetPath = AssetDatabase.GetAssetPath(i),
-                        name = i.name,
-                        key = i.Key,
-                        conditionType = i.ConditionType,
-                        isGlobal = i.IsGlobal,
-                        defaultValue = i.DefaultValue,
-                        min = i.Range.x,
-                        max = i.Range.y,
-                        minStat = i.MinStat != null ? i.MinStat.name : null,
-                        maxStat = i.MaxStat != null ? i.MaxStat.name : null,
-                        registered = registeredIntrinsics.Contains(i),
-                    }).ToList();
-                }
-
-                if (type is "all" or "event")
-                {
-                    events = Load<ConditionEventObject>().Select(e => (object)new
-                    {
-                        assetPath = AssetDatabase.GetAssetPath(e),
-                        name = e.name,
-                        key = e.Key,
-                        conditionType = e.ConditionType,
-                        isGlobal = e.IsGlobal,
-                        isEvent = e.IsEvent,
-                        customDataType = e.CustomDataType != null ? e.CustomDataType.FullName : null,
-                        registered = registeredEvents.Contains(e),
-                    }).ToList();
-                }
+                var stats = type is "all" or "stat" ? ListStats(essence) : null;
+                var intrinsics = type is "all" or "intrinsic" ? ListIntrinsics(essence) : null;
+                var events = type is "all" or "event" ? ListEvents(reaction) : null;
 
                 int count = (stats?.Count ?? 0) + (intrinsics?.Count ?? 0) + (events?.Count ?? 0);
 
@@ -99,6 +49,60 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                     result: new { stats, intrinsics, events });
             }
             catch (ToolException e) { return ToolEnvelope.FromException(e); }
+        }
+
+        private static HashSet<Object> RegisteredSet(IEnumerable<Object> registered)
+        {
+            return new HashSet<Object>(registered ?? Enumerable.Empty<Object>());
+        }
+
+        private static List<object> ListStats(EssenceSettings essence)
+        {
+            var registered = RegisteredSet(essence != null ? essence.StatSchemas.Cast<Object>() : null);
+            return Load<StatSchemaObject>().Select(s => (object)new
+            {
+                assetPath = AssetDatabase.GetAssetPath(s),
+                name = s.name,
+                key = s.Key,
+                conditionType = s.ConditionType,
+                isGlobal = s.IsGlobal,
+                registered = registered.Contains(s),
+            }).ToList();
+        }
+
+        private static List<object> ListIntrinsics(EssenceSettings essence)
+        {
+            var registered = RegisteredSet(essence != null ? essence.IntrinsicSchemas.Cast<Object>() : null);
+            return Load<IntrinsicSchemaObject>().Select(i => (object)new
+            {
+                assetPath = AssetDatabase.GetAssetPath(i),
+                name = i.name,
+                key = i.Key,
+                conditionType = i.ConditionType,
+                isGlobal = i.IsGlobal,
+                defaultValue = i.DefaultValue,
+                min = i.Range.x,
+                max = i.Range.y,
+                minStat = i.MinStat != null ? i.MinStat.name : null,
+                maxStat = i.MaxStat != null ? i.MaxStat.name : null,
+                registered = registered.Contains(i),
+            }).ToList();
+        }
+
+        private static List<object> ListEvents(ReactionSettings reaction)
+        {
+            var registered = RegisteredSet(reaction != null ? reaction.ConditionEvents.Cast<Object>() : null);
+            return Load<ConditionEventObject>().Select(e => (object)new
+            {
+                assetPath = AssetDatabase.GetAssetPath(e),
+                name = e.name,
+                key = e.Key,
+                conditionType = e.ConditionType,
+                isGlobal = e.IsGlobal,
+                isEvent = e.IsEvent,
+                customDataType = e.CustomDataType != null ? e.CustomDataType.FullName : null,
+                registered = registered.Contains(e),
+            }).ToList();
         }
 
         private static IEnumerable<T> Load<T>() where T : ScriptableObject

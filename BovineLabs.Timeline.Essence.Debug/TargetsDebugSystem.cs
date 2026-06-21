@@ -62,7 +62,7 @@ namespace BovineLabs.Essence.Debug
             _parentLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<TargetsDebugSystem>(ref state, TargetsDebugSystemConfig.Enabled.Data,
-                    out var drawer))
+                    out var drawer, out var viewer, out var hasViewer))
                 return;
 
             var names = new NativeHashMap<Entity, FixedString64Bytes>(64, Allocator.TempJob);
@@ -78,6 +78,8 @@ namespace BovineLabs.Essence.Debug
             state.Dependency = new DrawTargetsJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 LtwLookup = _ltwLookup,
                 LocalTransformLookup = _localTransformLookup,
                 ParentLookup = _parentLookup,
@@ -100,6 +102,8 @@ namespace BovineLabs.Essence.Debug
         private partial struct DrawTargetsJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Parent> ParentLookup;
@@ -121,38 +125,44 @@ namespace BovineLabs.Essence.Debug
             private void Execute(Entity entity, in LocalToWorld ltw, in Targets targets)
             {
                 var nullCount = 0;
+                var selfPos = GetAntiJitterPosition(entity, ltw.Position);
+                var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
 
                 var fsOwner = new FixedString32Bytes();
                 fsOwner.Append('O');
                 fsOwner.Append('w');
                 fsOwner.Append('r');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Owner, fsOwner, ColorOwner, 0,
-                    ref nullCount);
+                DrawTether(entity, selfPos, targets.Owner, fsOwner, ColorOwner, 0,
+                    ref nullCount, tier);
                 var fsSource = new FixedString32Bytes();
                 fsSource.Append('S');
                 fsSource.Append('r');
                 fsSource.Append('c');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Source, fsSource, ColorSource,
-                    1, ref nullCount);
+                DrawTether(entity, selfPos, targets.Source, fsSource, ColorSource,
+                    1, ref nullCount, tier);
                 var fsTarget = new FixedString32Bytes();
                 fsTarget.Append('T');
                 fsTarget.Append('g');
                 fsTarget.Append('t');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Target, fsTarget, ColorTarget,
-                    2, ref nullCount);
+                DrawTether(entity, selfPos, targets.Target, fsTarget, ColorTarget,
+                    2, ref nullCount, tier);
                 var fsCustom = new FixedString32Bytes();
                 fsCustom.Append('C');
                 fsCustom.Append('t');
                 fsCustom.Append('m');
-                DrawTether(entity, GetAntiJitterPosition(entity, ltw.Position), targets.Custom, fsCustom, ColorCustom,
-                    3, ref nullCount);
+                DrawTether(entity, selfPos, targets.Custom, fsCustom, ColorCustom,
+                    3, ref nullCount, tier);
             }
 
             private void DrawTether(Entity self, float3 selfPos, Entity target, FixedString32Bytes label, Color color,
-                int index, ref int nullCount)
+                int index, ref int nullCount, DebugTier tier)
             {
                 if (target == Entity.Null)
                 {
+                    // Null slots are clutter at distance; only spell them out up close.
+                    if (tier != DebugTier.Close)
+                        return;
+
                     var dimColor = color;
                     dimColor.a = 0.4f;
                     var nullPos = selfPos + new float3(0, 0.8f + nullCount * 0.25f, 0);
@@ -205,15 +215,15 @@ namespace BovineLabs.Essence.Debug
 
                 if (self == target || math.all(selfPos == targetPos))
                 {
-                    DrawSelfLoop(selfPos, display, color, index);
+                    DrawSelfLoop(selfPos, display, color, index, tier, label);
                     return;
                 }
 
-                DrawCurvedTether(selfPos, targetPos, display, color, index);
+                DrawCurvedTether(selfPos, targetPos, display, color, index, tier, label);
             }
 
             private unsafe void DrawCurvedTether(float3 start, float3 end, FixedString128Bytes label, Color color,
-                int index)
+                int index, DebugTier tier, FixedString32Bytes slot)
             {
                 var distance = math.distance(start, end);
                 var mid = (start + end) * 0.5f;
@@ -247,10 +257,23 @@ namespace BovineLabs.Essence.Debug
                 var dir = math.normalize(end - lines[lineLength - 4]);
                 Drawer.Arrow(end - dir * 0.1f, dir * 0.25f, color);
 
-                Drawer.Text128(mid + new float3(0, 0.2f, 0), label, color, 11f);
+                // Mid: which slot this tether is — short label only.
+                if (tier == DebugTier.Mid)
+                    Drawer.Text32(mid + new float3(0, 0.2f, 0), slot, color, 11f);
+
+                // Close: the full slot-name readout + measured span.
+                if (tier == DebugTier.Close)
+                {
+                    Drawer.Text128(mid + new float3(0, 0.2f, 0), label, color, 11f);
+                    var readout = new FixedString128Bytes();
+                    readout.Append(distance);
+                    readout.Append((FixedString32Bytes)"m");
+                    Drawer.Text128(mid + new float3(0, -0.1f, 0), readout, TimelineDebugColors.Label, 10f);
+                }
             }
 
-            private unsafe void DrawSelfLoop(float3 pos, FixedString128Bytes label, Color color, int index)
+            private unsafe void DrawSelfLoop(float3 pos, FixedString128Bytes label, Color color, int index,
+                DebugTier tier, FixedString32Bytes slot)
             {
                 var height = 1.0f + index * 0.3f;
                 var spread = 0.5f + index * 0.1f;
@@ -293,7 +316,11 @@ namespace BovineLabs.Essence.Debug
                 Drawer.Arrow(pos - dir * 0.05f, dir * 0.2f, color);
 
                 var topPos = pos + new float3(0, height + 0.1f, 0);
-                Drawer.Text128(topPos, label, color, 10f);
+                // Mid: short slot label; Close: the full slot-name readout.
+                if (tier == DebugTier.Mid)
+                    Drawer.Text32(topPos, slot, color, 10f);
+                else if (tier == DebugTier.Close)
+                    Drawer.Text128(topPos, label, color, 10f);
             }
         }
     }

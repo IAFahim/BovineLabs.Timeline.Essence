@@ -136,6 +136,34 @@ namespace BovineLabs.Timeline.Essence.Editor
             var hasLive = TryGetLiveStats(go, out var liveStats);
 
             // Group modifiers by stat schema and resolve Value = Σadded × (1+Σincreased) × Π(1+more).
+            var groups = GroupStatModifiers(stat);
+            if (groups.Count == 0)
+            {
+                container.Add(Muted("(no stat defaults)"));
+            }
+
+            foreach (var kvp in groups)
+            {
+                var value = ResolveStatValue(kvp.Value);
+
+                var line = $"{kvp.Key.name} = {value:0.##}  (×{value / StatValue.ToInt:0.00})";
+                if (hasLive && liveStats.TryGetValue((StatKey)kvp.Key, out var live))
+                {
+                    line += $"   ▶ live {live.Value:0.##}";
+                }
+
+                container.Add(Bold(line));
+                foreach (var m in kvp.Value)
+                {
+                    container.Add(Muted($"    · {m.ModifyType} {m.Value:0.###}"));
+                }
+            }
+
+            return container;
+        }
+
+        private static Dictionary<StatSchemaObject, List<StatModifierAuthoring>> GroupStatModifiers(StatAuthoring stat)
+        {
             var groups = new Dictionary<StatSchemaObject, List<StatModifierAuthoring>>();
             foreach (var m in stat.StatDefaults)
             {
@@ -152,45 +180,28 @@ namespace BovineLabs.Timeline.Essence.Editor
                 list.Add(m);
             }
 
-            if (groups.Count == 0)
+            return groups;
+        }
+
+        private static float ResolveStatValue(List<StatModifierAuthoring> modifiers)
+        {
+            var added = 0f;
+            var increased = 0f;
+            var more = 1f;
+            foreach (var m in modifiers)
             {
-                container.Add(Muted("(no stat defaults)"));
-            }
-
-            foreach (var kvp in groups)
-            {
-                var added = 0f;
-                var increased = 0f;
-                var more = 1f;
-                foreach (var m in kvp.Value)
+                switch (m.ModifyType)
                 {
-                    switch (m.ModifyType)
-                    {
-                        case StatAuthoringType.Added: added += m.Value; break;
-                        case StatAuthoringType.Subtracted: added -= m.Value; break;
-                        case StatAuthoringType.Increased: increased += m.Value; break;
-                        case StatAuthoringType.Reduced: increased -= m.Value; break;
-                        case StatAuthoringType.More: more *= 1f + m.Value; break;
-                        case StatAuthoringType.Less: more *= 1f - m.Value; break;
-                    }
-                }
-
-                var value = added * (1f + increased) * more;
-
-                var line = $"{kvp.Key.name} = {value:0.##}  (×{value / StatValue.ToInt:0.00})";
-                if (hasLive && liveStats.TryGetValue((StatKey)kvp.Key, out var live))
-                {
-                    line += $"   ▶ live {live.Value:0.##}";
-                }
-
-                container.Add(Bold(line));
-                foreach (var m in kvp.Value)
-                {
-                    container.Add(Muted($"    · {m.ModifyType} {m.Value:0.###}"));
+                    case StatAuthoringType.Added: added += m.Value; break;
+                    case StatAuthoringType.Subtracted: added -= m.Value; break;
+                    case StatAuthoringType.Increased: increased += m.Value; break;
+                    case StatAuthoringType.Reduced: increased -= m.Value; break;
+                    case StatAuthoringType.More: more *= 1f + m.Value; break;
+                    case StatAuthoringType.Less: more *= 1f - m.Value; break;
                 }
             }
 
-            return container;
+            return added * (1f + increased) * more;
         }
 
         // ---- Intrinsics --------------------------------------------------------------------------------------
@@ -214,13 +225,8 @@ namespace BovineLabs.Timeline.Essence.Editor
 
                 var schema = d.Intrinsic;
                 var range = schema.Range;
-                var clamp = string.Empty;
-                if (schema.MinStat != null || schema.MaxStat != null)
-                {
-                    clamp = $"  clamp[{(schema.MinStat != null ? schema.MinStat.name : "-")}..{(schema.MaxStat != null ? schema.MaxStat.name : "-")}]";
-                }
 
-                var line = $"{schema.name} = {d.Value}   range [{range.x},{range.y}]{clamp}";
+                var line = $"{schema.name} = {d.Value}   range [{range.x},{range.y}]{BuildClampSuffix(schema)}";
                 if (hasLive && live.TryGetValue((IntrinsicKey)schema, out var liveVal))
                 {
                     line += $"   ▶ live {liveVal}";
@@ -236,6 +242,16 @@ namespace BovineLabs.Timeline.Essence.Editor
             return container;
         }
 
+        private static string BuildClampSuffix(IntrinsicSchemaObject schema)
+        {
+            if (schema.MinStat == null && schema.MaxStat == null)
+            {
+                return string.Empty;
+            }
+
+            return $"  clamp[{(schema.MinStat != null ? schema.MinStat.name : "-")}..{(schema.MaxStat != null ? schema.MaxStat.name : "-")}]";
+        }
+
         // ---- Reactions ---------------------------------------------------------------------------------------
 
         private VisualElement BuildReactions(ReactionAuthoring reaction)
@@ -243,16 +259,21 @@ namespace BovineLabs.Timeline.Essence.Editor
             var container = new VisualElement();
             var so = new SerializedObject(reaction);
 
-            // Timing
+            container.Add(Bold(BuildTimingLine(so)));
+            this.AddChanceAndExpression(container, so);
+            this.AddConditions(container, so);
+            this.AddActions(container, reaction);
+
+            return container;
+        }
+
+        private static string BuildTimingLine(SerializedObject so)
+        {
             var cooldown = so.FindProperty("Active.cooldown");
             var duration = so.FindProperty("Active.duration");
             var cancellable = so.FindProperty("Active.cancellable");
             var trigger = so.FindProperty("Active.trigger");
-            var timing = "WHEN conditions hold";
-            if (trigger != null && trigger.boolValue)
-            {
-                timing = "WHEN triggered";
-            }
+            var timing = trigger != null && trigger.boolValue ? "WHEN triggered" : "WHEN conditions hold";
 
             var bits = new List<string>();
             if (cooldown != null && cooldown.floatValue > 0)
@@ -265,8 +286,11 @@ namespace BovineLabs.Timeline.Essence.Editor
                 bits.Add($"active {duration.floatValue:0.###}s{(cancellable != null && cancellable.boolValue ? " (cancellable)" : string.Empty)}");
             }
 
-            container.Add(Bold(timing + (bits.Count > 0 ? "  ·  " + string.Join(", ", bits) : string.Empty)));
+            return timing + (bits.Count > 0 ? "  ·  " + string.Join(", ", bits) : string.Empty);
+        }
 
+        private void AddChanceAndExpression(VisualElement container, SerializedObject so)
+        {
             var chance = so.FindProperty("Conditions.chanceToTrigger");
             if (chance != null && chance.floatValue < 1f)
             {
@@ -278,22 +302,25 @@ namespace BovineLabs.Timeline.Essence.Editor
             {
                 container.Add(Muted($"    composite: {expr.stringValue}"));
             }
+        }
 
-            // Conditions
+        private void AddConditions(VisualElement container, SerializedObject so)
+        {
             var conditions = so.FindProperty("Conditions.conditions");
             if (conditions == null || conditions.arraySize == 0)
             {
                 container.Add(Muted("    (no conditions — always)"));
-            }
-            else
-            {
-                for (var i = 0; i < conditions.arraySize; i++)
-                {
-                    container.Add(this.BuildCondition(conditions.GetArrayElementAtIndex(i), i));
-                }
+                return;
             }
 
-            // Actions (THEN)
+            for (var i = 0; i < conditions.arraySize; i++)
+            {
+                container.Add(this.BuildCondition(conditions.GetArrayElementAtIndex(i), i));
+            }
+        }
+
+        private void AddActions(VisualElement container, ReactionAuthoring reaction)
+        {
             container.Add(Bold("THEN"));
             var any = false;
             foreach (var c in reaction.GetComponents<MonoBehaviour>())
@@ -315,8 +342,6 @@ namespace BovineLabs.Timeline.Essence.Editor
             {
                 container.Add(Muted("    (no Action* components — add one to do something)"));
             }
-
-            return container;
         }
 
         private VisualElement BuildCondition(SerializedProperty cond, int index)
