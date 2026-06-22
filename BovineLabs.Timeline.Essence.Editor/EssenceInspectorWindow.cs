@@ -404,7 +404,11 @@ namespace BovineLabs.Timeline.Essence.Editor
             return true;
         }
 
-        // Best-effort GameObject -> baked Entity by debug-name match (entity names = source GameObject names in editor).
+        // Resolve the selected GameObject -> its baked Entity via the authoritative bake-time authoring mapping
+        // (EntityGuid / originating instance id), NOT by debug-name. Names are not unique (prefab instances,
+        // many actors share 'Enemy'/'Player'), and query order is not stable across runs — name-matching would
+        // attribute another actor's live stats to this one and flip between runs. When more than one Essence-carrying
+        // entity maps back to this exact GameObject the result is genuinely ambiguous, so we bail rather than guess.
         private static bool TryGetEntity(GameObject go, out EntityManager em, out Entity entity)
         {
             em = default;
@@ -423,19 +427,27 @@ namespace BovineLabs.Timeline.Essence.Editor
                 }
 
                 em = world.EntityManager;
-                using var query = new EntityQueryBuilder(Unity.Collections.Allocator.Temp)
-                    .WithAny<Stat, Intrinsic>().Build(em);
-                using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
-                foreach (var e in entities)
+                using var candidates = new Unity.Collections.NativeList<Entity>(Unity.Collections.Allocator.Temp);
+                em.Debug.GetEntitiesForAuthoringObject(go, candidates);
+
+                foreach (var e in candidates)
                 {
-                    if (em.GetName(e) == go.name)
+                    if (!em.HasBuffer<Stat>(e) && !em.HasBuffer<Intrinsic>(e))
                     {
-                        entity = e;
-                        return true;
+                        continue;
                     }
+
+                    if (entity != Entity.Null)
+                    {
+                        // Multiple Essence-carrying entities map to this GameObject — ambiguous, do not silently pick one.
+                        entity = Entity.Null;
+                        return false;
+                    }
+
+                    entity = e;
                 }
 
-                return false;
+                return entity != Entity.Null;
             }
             catch
             {

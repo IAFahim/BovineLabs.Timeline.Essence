@@ -53,7 +53,7 @@ namespace BovineLabs.Timeline.Essence.Data
                 return true;
             }
 
-            if (EntityLinkResolver.TryResolve(target, linkKey, sources, links, out var linked))
+            if (EntityLinkResolver.TryResolve(target, linkKey, sources, links, out var linked) && linked != Entity.Null)
             {
                 resolved = linked;
                 return true;

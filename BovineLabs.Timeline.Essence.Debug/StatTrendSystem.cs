@@ -1,7 +1,6 @@
 #if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
 using BovineLabs.Essence.Data;
-using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Entities;
@@ -38,7 +37,7 @@ namespace BovineLabs.Essence.Debug
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!EssenceTelemetryConfig.Enabled.Data && !SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
+            if (!EssenceTelemetryConfig.Enabled.Data) return;
 
             var time = SystemAPI.Time.ElapsedTime;
             if (time < nextSample) return;

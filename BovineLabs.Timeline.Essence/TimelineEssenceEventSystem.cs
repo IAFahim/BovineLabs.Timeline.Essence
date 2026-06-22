@@ -32,12 +32,18 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private ConditionEventWriter.Lookup _writers;
 
+        private EntityQuery _query;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
             _uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
+            _query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TrackBinding, TimelineEssenceEventData, ClipActive>()
+                .WithDisabled<ClipActivePrevious>()
+                .Build(ref state);
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
@@ -59,6 +65,15 @@ namespace BovineLabs.Timeline.Essence
             _linkLookup.Update(ref state);
             _writers.Update(ref state);
             _uniqueKeySet.Clear();
+
+            // GatherJob writes unique targets through a ParallelWriter, which cannot grow. Each active clip can
+            // resolve to a distinct target, so grow capacity to the active clip count on the main thread before
+            // scheduling, mirroring the fallback intent of _eventChanges.
+            var activeCount = _query.CalculateEntityCount();
+            if (_uniqueKeySet.Capacity < activeCount)
+            {
+                _uniqueKeySet.Capacity = activeCount;
+            }
 
             state.Dependency = new GatherJob
             {

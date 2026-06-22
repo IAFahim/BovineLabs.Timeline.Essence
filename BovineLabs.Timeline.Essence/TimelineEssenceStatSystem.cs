@@ -41,6 +41,9 @@ namespace BovineLabs.Timeline.Essence
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
 
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
             var gatherAddJob = new GatherAddJob
             {
                 Mutations = addStats.AsParallelWriter(),
@@ -56,6 +59,19 @@ namespace BovineLabs.Timeline.Essence
             state.Dependency = gatherRemoveJob.ScheduleParallel(state.Dependency);
             state.Dependency = gatherAddJob.ScheduleParallel(state.Dependency);
 
+            // Track each clip entity's currently-applied modifier in an ICleanupComponentData. If a clip entity is
+            // destroyed while still active (director/sub-scene torn down before the deactivation edge fires), neither
+            // GatherAddJob nor GatherRemoveJob runs the balancing remove and the modifier would leak onto the live
+            // target forever. The cleanup component survives the destroy as a zombie, letting GatherDestroyedJob
+            // reclaim the orphaned modifier by SourceEntity = the (now-dead) clip entity.
+            state.Dependency = new AttachCleanupJob { ECB = ecb }.ScheduleParallel(state.Dependency);
+            state.Dependency = new SyncCleanupJob().ScheduleParallel(state.Dependency);
+            state.Dependency = new GatherDestroyedJob
+            {
+                Mutations = removeStats.AsParallelWriter(),
+                ECB = ecb
+            }.ScheduleParallel(state.Dependency);
+
             state.Dependency = new ApplyJob
             {
                 Adds = addStats,
@@ -63,6 +79,13 @@ namespace BovineLabs.Timeline.Essence
                 StatModifiers = SystemAPI.GetBufferLookup<StatModifiers>(),
                 StatChangeds = SystemAPI.GetComponentLookup<StatChanged>()
             }.Schedule(state.Dependency);
+        }
+
+        // Lingers on a destroyed clip entity as a zombie so the orphaned StatModifier can be reclaimed from the still
+        // -live target. Target mirrors TimelineEssenceStatState.AppliedTarget (Entity.Null when nothing is applied).
+        private struct StatModifierCleanup : ICleanupComponentData
+        {
+            public Entity Target;
         }
 
         private struct StatMutation
@@ -124,6 +147,49 @@ namespace BovineLabs.Timeline.Essence
                 if (state.AppliedTarget == Entity.Null) return;
 
                 Mutations.Enqueue(new StatMutation { Target = state.AppliedTarget, Source = clipEntity });
+            }
+        }
+
+        // Attaches the cleanup marker to every stat clip entity once, seeding it with the current applied target so
+        // reclamation is correct even if the entity is destroyed the same frame the marker is added.
+        [BurstCompile]
+        [WithNone(typeof(StatModifierCleanup))]
+        private partial struct AttachCleanupJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ECB;
+
+            private void Execute([EntityIndexInQuery] int sortKey, Entity clipEntity, in TimelineEssenceStatState state)
+            {
+                ECB.AddComponent(sortKey, clipEntity, new StatModifierCleanup { Target = state.AppliedTarget });
+            }
+        }
+
+        // Keeps the zombie-surviving marker in sync with the live applied target every frame.
+        [BurstCompile]
+        private partial struct SyncCleanupJob : IJobEntity
+        {
+            private void Execute(in TimelineEssenceStatState state, ref StatModifierCleanup cleanup)
+            {
+                cleanup.Target = state.AppliedTarget;
+            }
+        }
+
+        // Runs on clip entities that were destroyed while a modifier was still applied: the cleanup marker outlives the
+        // entity's IComponentData, so TimelineEssenceStatState is gone. Reclaim the orphaned modifier from the target
+        // (no-op if it was already removed by a normal deactivation edge) and release the zombie.
+        [BurstCompile]
+        [WithNone(typeof(TimelineEssenceStatState))]
+        private partial struct GatherDestroyedJob : IJobEntity
+        {
+            public NativeQueue<StatMutation>.ParallelWriter Mutations;
+            public EntityCommandBuffer.ParallelWriter ECB;
+
+            private void Execute([EntityIndexInQuery] int sortKey, Entity clipEntity, in StatModifierCleanup cleanup)
+            {
+                if (cleanup.Target != Entity.Null)
+                    Mutations.Enqueue(new StatMutation { Target = cleanup.Target, Source = clipEntity });
+
+                ECB.RemoveComponent<StatModifierCleanup>(sortKey, clipEntity);
             }
         }
 
