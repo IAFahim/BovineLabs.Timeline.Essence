@@ -31,7 +31,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
                 ValuePerTick = ValuePerTick,
                 TickCount = TickCount,
                 Duration = Duration,
-                Curve = Curve,
+                Curve = Curve
             });
             builder.AddComponent(new TimelineEssenceTickState { Fired = 0 });
         }

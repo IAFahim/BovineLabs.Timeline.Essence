@@ -4,11 +4,11 @@ using BovineLabs.Essence;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
-using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -51,15 +51,12 @@ namespace BovineLabs.Timeline.Essence
             _eventWriters.Update(ref state);
             _intrinsicWriters.Update(ref state, _intrinsicWriterSingletonData);
 
-            // Two single-writer jobs: IntrinsicWriter.Lookup nests a ConditionEventWriter, so it cannot share a
-            // job with a standalone ConditionEventWriter.Lookup (the EventsDirty lookup would alias). Each job
-            // handles one payload mode; the shared TickState write serializes them.
             state.Dependency = new EventTickJob
             {
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                EventWriters = _eventWriters,
+                EventWriters = _eventWriters
             }.Schedule(state.Dependency);
 
             state.Dependency = new IntrinsicTickJob
@@ -67,7 +64,7 @@ namespace BovineLabs.Timeline.Essence
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                IntrinsicWriters = _intrinsicWriters,
+                IntrinsicWriters = _intrinsicWriters
             }.Schedule(state.Dependency);
         }
 
@@ -130,8 +127,6 @@ namespace BovineLabs.Timeline.Essence
 
     internal static class TickMath
     {
-        // Advance the CDF distribution: reset on the activation edge, then fire the positive delta of
-        // round(CDF(t) * TickCount). Returns false (delta = 0) when nothing should fire this frame.
         public static bool TryAdvance(in TimelineEssenceTickData data, in LocalTime localTime, bool justActivated,
             ref TimelineEssenceTickState tickState, out int delta)
         {

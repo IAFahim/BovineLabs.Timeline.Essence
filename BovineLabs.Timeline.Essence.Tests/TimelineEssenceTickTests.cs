@@ -6,9 +6,6 @@ using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Essence.Tests
 {
-    // Pins the tick-distribution invariant used by TimelineEssenceTickSystem: stepping
-    // target = round(CDF(t) * N) and firing the positive delta each step must (a) never go backwards and
-    // (b) fire exactly N ticks across the window, for any monotonic CDF.
     public class TimelineEssenceTickTests
     {
         private static BlobAssetReference<DistributionCurveBlob> Cdf(params float[] values)
@@ -60,14 +57,13 @@ namespace BovineLabs.Timeline.Essence.Tests
         public void FrontLoadedCurveFiresEarlierThanUniform()
         {
             using var uniform = UniformCdf(5);
-            using var frontLoaded = Cdf(0f, 1f, 1f, 1f, 1f); // all mass by t=0.25
+            using var frontLoaded = Cdf(0f, 1f, 1f, 1f, 1f);
 
             Assert.Greater(
                 frontLoaded.Value.Evaluate(0.25f),
                 uniform.Value.Evaluate(0.25f),
                 "front-loaded curve should have a higher cumulative fraction early");
 
-            // And it still totals exactly N.
             Assert.AreEqual(8, Simulate(frontLoaded, 8, 200, out _));
         }
     }

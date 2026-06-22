@@ -14,7 +14,6 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceLoopRefireSystem : ISystem
     {
-        /// <inheritdoc />
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
@@ -29,28 +28,16 @@ namespace BovineLabs.Timeline.Essence
             private void Execute(in LocalTime localTime, in TimeTransform timeTransform, in TimerData timerData,
                 EnabledRefRW<ClipActivePrevious> clipActivePrevious)
             {
-                if (!clipActivePrevious.ValueRO)
-                {
-                    return;
-                }
+                if (!clipActivePrevious.ValueRO) return;
 
                 var deltaTicks = timerData.DeltaTime.Value;
-                if (deltaTicks < 0)
-                {
-                    deltaTicks = -deltaTicks;
-                }
+                if (deltaTicks < 0) deltaTicks = -deltaTicks;
 
-                if (deltaTicks == 0)
-                {
-                    return;
-                }
+                if (deltaTicks == 0) return;
 
                 var ticksPastStart = (localTime.Value - timeTransform.ClipIn).Value;
                 var windowTicks = (long)math.ceil(deltaTicks * timeTransform.Scale) + 1;
-                if (ticksPastStart >= 0 && ticksPastStart < windowTicks)
-                {
-                    clipActivePrevious.ValueRW = false;
-                }
+                if (ticksPastStart >= 0 && ticksPastStart < windowTicks) clipActivePrevious.ValueRW = false;
             }
         }
     }

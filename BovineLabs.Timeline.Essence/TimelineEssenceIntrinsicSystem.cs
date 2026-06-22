@@ -72,14 +72,8 @@ namespace BovineLabs.Timeline.Essence
             _writers.Update(ref state, _intrinsicWriterSingletonData);
             _uniqueKeySet.Clear();
 
-            // Each active clip adds at most one unique target key. Grow the fixed-capacity set to the active-clip count
-            // before scheduling so the parallel writer cannot overflow when more than its initial capacity of distinct
-            // targets receive intrinsic changes in a single frame.
             var activeClipCount = _activeClipQuery.CalculateEntityCount();
-            if (activeClipCount > _uniqueKeySet.Capacity)
-            {
-                _uniqueKeySet.Capacity = activeClipCount;
-            }
+            if (activeClipCount > _uniqueKeySet.Capacity) _uniqueKeySet.Capacity = activeClipCount;
 
             state.Dependency = new GatherJob
             {

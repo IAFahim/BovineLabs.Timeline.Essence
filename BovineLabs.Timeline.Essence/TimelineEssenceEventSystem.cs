@@ -66,14 +66,8 @@ namespace BovineLabs.Timeline.Essence
             _writers.Update(ref state);
             _uniqueKeySet.Clear();
 
-            // GatherJob writes unique targets through a ParallelWriter, which cannot grow. Each active clip can
-            // resolve to a distinct target, so grow capacity to the active clip count on the main thread before
-            // scheduling, mirroring the fallback intent of _eventChanges.
             var activeCount = _query.CalculateEntityCount();
-            if (_uniqueKeySet.Capacity < activeCount)
-            {
-                _uniqueKeySet.Capacity = activeCount;
-            }
+            if (_uniqueKeySet.Capacity < activeCount) _uniqueKeySet.Capacity = activeCount;
 
             state.Dependency = new GatherJob
             {

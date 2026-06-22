@@ -67,7 +67,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 ValuePerTick = valuePerTick,
                 TickCount = math.max(0, tickCount),
                 Duration = math.max(0.0001f, windowSeconds),
-                Curve = curve,
+                Curve = curve
             };
             var commands = new BakerCommands(context.Baker, clipEntity);
             builder.ApplyTo(ref commands);
@@ -75,8 +75,6 @@ namespace BovineLabs.Timeline.Essence.Authoring
             base.Bake(clipEntity, context);
         }
 
-        // Integrate the density curve into a normalized CDF (cumulative trapezoid). Flat density -> linear CDF
-        // (even ticks); front-loaded density -> early ticks. Degenerate (all-zero) density falls back to uniform.
         private BlobAssetReference<DistributionCurveBlob> BuildCurve()
         {
             const int samples = 32;

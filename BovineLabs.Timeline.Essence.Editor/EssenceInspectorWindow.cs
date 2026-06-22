@@ -1,32 +1,46 @@
-// <copyright file="EssenceInspectorWindow.cs" company="BovineLabs">
-//     Copyright (c) BovineLabs. All rights reserved.
-// </copyright>
+using System;
+using System.Collections.Generic;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Authoring.Core;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Editor;
+using Unity.Collections;
+using Unity.Entities;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace BovineLabs.Timeline.Essence.Editor
 {
-    using System;
-    using System.Collections.Generic;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Authoring.Core;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Core.Editor;
-    using Unity.Entities;
-    using UnityEditor;
-    using UnityEngine;
-    using UnityEngine.UIElements;
-    using Object = UnityEngine.Object;
-
-    /// <summary>
-    /// Companion window that de-black-boxes the Essence Stats + Reaction systems for designers: select an actor and
-    /// it shows the resolved stat values (the ×100 / Added·Increased·More math worked out), intrinsic ranges/clamps,
-    /// every reaction in plain English, live runtime values in play mode, and a permanent legend. Read-only — it
-    /// never edits, and never replaces the package's own component inspectors.
-    /// </summary>
     public sealed class EssenceInspectorWindow : EditorWindow
     {
         private ScrollView body;
+
+        private void OnEnable()
+        {
+            Selection.selectionChanged += Rebuild;
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
+        }
+
+        private void OnDisable()
+        {
+            Selection.selectionChanged -= Rebuild;
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+        }
+
+        private void CreateGUI()
+        {
+            body = new ScrollView();
+            rootVisualElement.Add(body);
+            Rebuild();
+
+            rootVisualElement.schedule.Execute(() =>
+            {
+                if (Application.isPlaying) Rebuild();
+            }).Every(500);
+        }
 
         [MenuItem("Tools/BovineLabs/Essence Inspector")]
         public static void Open()
@@ -34,84 +48,47 @@ namespace BovineLabs.Timeline.Essence.Editor
             GetWindow<EssenceInspectorWindow>("Essence Inspector").Show();
         }
 
-        private void CreateGUI()
-        {
-            this.body = new ScrollView();
-            this.rootVisualElement.Add(this.body);
-            this.Rebuild();
-
-            // Live values: rebuild on a slow tick, but only while playing (no edit-mode flicker).
-            this.rootVisualElement.schedule.Execute(() =>
-            {
-                if (Application.isPlaying)
-                {
-                    this.Rebuild();
-                }
-            }).Every(500);
-        }
-
-        private void OnEnable()
-        {
-            Selection.selectionChanged += this.Rebuild;
-            EditorApplication.playModeStateChanged += this.OnPlayModeChanged;
-        }
-
-        private void OnDisable()
-        {
-            Selection.selectionChanged -= this.Rebuild;
-            EditorApplication.playModeStateChanged -= this.OnPlayModeChanged;
-        }
-
         private void OnPlayModeChanged(PlayModeStateChange _)
         {
-            this.Rebuild();
+            Rebuild();
         }
 
         private void Rebuild()
         {
-            if (this.body == null)
-            {
-                return;
-            }
+            if (body == null) return;
 
-            this.body.Clear();
+            body.Clear();
 
             var go = Selection.activeGameObject;
             if (go == null)
             {
-                this.body.Add(Muted("Select a GameObject with StatAuthoring / ReactionAuthoring."));
-                this.body.Add(BuildLegend());
+                body.Add(Muted("Select a GameObject with StatAuthoring / ReactionAuthoring."));
+                body.Add(BuildLegend());
                 return;
             }
 
-            // Header
             var header = Row();
             var title = new Label(go.name) { style = { unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1 } };
             header.Add(title);
             header.Add(EditorInspect.CreateButton(() => go, "◎", "Open this object's Properties window."));
-            this.body.Add(header);
+            body.Add(header);
 
             var stat = go.GetComponent<StatAuthoring>();
             var reaction = go.GetComponent<ReactionAuthoring>();
 
             if (stat == null && reaction == null)
-            {
-                this.body.Add(Muted("No StatAuthoring or ReactionAuthoring on this object."));
-            }
+                body.Add(Muted("No StatAuthoring or ReactionAuthoring on this object."));
 
-            TrySection("Stats", stat != null, () => this.BuildStats(stat, go));
-            TrySection("Intrinsics", stat != null, () => this.BuildIntrinsics(stat, go));
-            TrySection("Reactions", reaction != null, () => this.BuildReactions(reaction));
+            TrySection("Stats", stat != null, () => BuildStats(stat, go));
+            TrySection("Intrinsics", stat != null, () => BuildIntrinsics(stat, go));
+            TrySection("Reactions", reaction != null, () => BuildReactions(reaction));
 
-            this.body.Add(BuildLegend());
+            body.Add(BuildLegend());
         }
 
         private void TrySection(string title, bool show, Func<VisualElement> build)
         {
-            if (!show)
-            {
-                return;
-            }
+            if (!show) return;
 
             var foldout = Section(title);
             try
@@ -123,10 +100,8 @@ namespace BovineLabs.Timeline.Essence.Editor
                 foldout.Add(Muted($"({title} unavailable: {e.GetType().Name})"));
             }
 
-            this.body.Add(foldout);
+            body.Add(foldout);
         }
-
-        // ---- Stats -------------------------------------------------------------------------------------------
 
         private VisualElement BuildStats(StatAuthoring stat, GameObject go)
         {
@@ -135,12 +110,8 @@ namespace BovineLabs.Timeline.Essence.Editor
 
             var hasLive = TryGetLiveStats(go, out var liveStats);
 
-            // Group modifiers by stat schema and resolve Value = Σadded × (1+Σincreased) × Π(1+more).
             var groups = GroupStatModifiers(stat);
-            if (groups.Count == 0)
-            {
-                container.Add(Muted("(no stat defaults)"));
-            }
+            if (groups.Count == 0) container.Add(Muted("(no stat defaults)"));
 
             foreach (var kvp in groups)
             {
@@ -148,15 +119,10 @@ namespace BovineLabs.Timeline.Essence.Editor
 
                 var line = $"{kvp.Key.name} = {value:0.##}  (×{value / StatValue.ToInt:0.00})";
                 if (hasLive && liveStats.TryGetValue((StatKey)kvp.Key, out var live))
-                {
                     line += $"   ▶ live {live.Value:0.##}";
-                }
 
                 container.Add(Bold(line));
-                foreach (var m in kvp.Value)
-                {
-                    container.Add(Muted($"    · {m.ModifyType} {m.Value:0.###}"));
-                }
+                foreach (var m in kvp.Value) container.Add(Muted($"    · {m.ModifyType} {m.Value:0.###}"));
             }
 
             return container;
@@ -167,15 +133,10 @@ namespace BovineLabs.Timeline.Essence.Editor
             var groups = new Dictionary<StatSchemaObject, List<StatModifierAuthoring>>();
             foreach (var m in stat.StatDefaults)
             {
-                if (m?.Stat == null)
-                {
-                    continue;
-                }
+                if (m?.Stat == null) continue;
 
                 if (!groups.TryGetValue(m.Stat, out var list))
-                {
                     groups[m.Stat] = list = new List<StatModifierAuthoring>();
-                }
 
                 list.Add(m);
             }
@@ -189,7 +150,6 @@ namespace BovineLabs.Timeline.Essence.Editor
             var increased = 0f;
             var more = 1f;
             foreach (var m in modifiers)
-            {
                 switch (m.ModifyType)
                 {
                     case StatAuthoringType.Added: added += m.Value; break;
@@ -199,44 +159,31 @@ namespace BovineLabs.Timeline.Essence.Editor
                     case StatAuthoringType.More: more *= 1f + m.Value; break;
                     case StatAuthoringType.Less: more *= 1f - m.Value; break;
                 }
-            }
 
             return added * (1f + increased) * more;
         }
-
-        // ---- Intrinsics --------------------------------------------------------------------------------------
 
         private VisualElement BuildIntrinsics(StatAuthoring stat, GameObject go)
         {
             var container = new VisualElement();
             var hasLive = TryGetLiveIntrinsics(go, out var live);
 
-            if (stat.IntrinsicDefaults.Length == 0)
-            {
-                container.Add(Muted("(no intrinsic defaults)"));
-            }
+            if (stat.IntrinsicDefaults.Length == 0) container.Add(Muted("(no intrinsic defaults)"));
 
             foreach (var d in stat.IntrinsicDefaults)
             {
-                if (d?.Intrinsic == null)
-                {
-                    continue;
-                }
+                if (d?.Intrinsic == null) continue;
 
                 var schema = d.Intrinsic;
                 var range = schema.Range;
 
                 var line = $"{schema.name} = {d.Value}   range [{range.x},{range.y}]{BuildClampSuffix(schema)}";
-                if (hasLive && live.TryGetValue((IntrinsicKey)schema, out var liveVal))
-                {
-                    line += $"   ▶ live {liveVal}";
-                }
+                if (hasLive && live.TryGetValue((IntrinsicKey)schema, out var liveVal)) line += $"   ▶ live {liveVal}";
 
                 container.Add(Bold(line));
                 if (d.Value < range.x || d.Value > range.y)
-                {
-                    container.Add(Warn($"    ⚠ default {d.Value} is outside range [{range.x},{range.y}] — will be clamped."));
-                }
+                    container.Add(
+                        Warn($"    ⚠ default {d.Value} is outside range [{range.x},{range.y}] — will be clamped."));
             }
 
             return container;
@@ -244,15 +191,11 @@ namespace BovineLabs.Timeline.Essence.Editor
 
         private static string BuildClampSuffix(IntrinsicSchemaObject schema)
         {
-            if (schema.MinStat == null && schema.MaxStat == null)
-            {
-                return string.Empty;
-            }
+            if (schema.MinStat == null && schema.MaxStat == null) return string.Empty;
 
-            return $"  clamp[{(schema.MinStat != null ? schema.MinStat.name : "-")}..{(schema.MaxStat != null ? schema.MaxStat.name : "-")}]";
+            return
+                $"  clamp[{(schema.MinStat != null ? schema.MinStat.name : "-")}..{(schema.MaxStat != null ? schema.MaxStat.name : "-")}]";
         }
-
-        // ---- Reactions ---------------------------------------------------------------------------------------
 
         private VisualElement BuildReactions(ReactionAuthoring reaction)
         {
@@ -260,9 +203,9 @@ namespace BovineLabs.Timeline.Essence.Editor
             var so = new SerializedObject(reaction);
 
             container.Add(Bold(BuildTimingLine(so)));
-            this.AddChanceAndExpression(container, so);
-            this.AddConditions(container, so);
-            this.AddActions(container, reaction);
+            AddChanceAndExpression(container, so);
+            AddConditions(container, so);
+            AddActions(container, reaction);
 
             return container;
         }
@@ -276,15 +219,11 @@ namespace BovineLabs.Timeline.Essence.Editor
             var timing = trigger != null && trigger.boolValue ? "WHEN triggered" : "WHEN conditions hold";
 
             var bits = new List<string>();
-            if (cooldown != null && cooldown.floatValue > 0)
-            {
-                bits.Add($"cooldown {cooldown.floatValue:0.###}s");
-            }
+            if (cooldown != null && cooldown.floatValue > 0) bits.Add($"cooldown {cooldown.floatValue:0.###}s");
 
             if (duration != null && duration.floatValue > 0)
-            {
-                bits.Add($"active {duration.floatValue:0.###}s{(cancellable != null && cancellable.boolValue ? " (cancellable)" : string.Empty)}");
-            }
+                bits.Add(
+                    $"active {duration.floatValue:0.###}s{(cancellable != null && cancellable.boolValue ? " (cancellable)" : string.Empty)}");
 
             return timing + (bits.Count > 0 ? "  ·  " + string.Join(", ", bits) : string.Empty);
         }
@@ -293,15 +232,11 @@ namespace BovineLabs.Timeline.Essence.Editor
         {
             var chance = so.FindProperty("Conditions.chanceToTrigger");
             if (chance != null && chance.floatValue < 1f)
-            {
                 container.Add(Muted($"    chance {chance.floatValue * 100f:0.#}%"));
-            }
 
             var expr = so.FindProperty("Conditions.conditionLogic.expression");
             if (expr != null && !string.IsNullOrEmpty(expr.stringValue))
-            {
                 container.Add(Muted($"    composite: {expr.stringValue}"));
-            }
         }
 
         private void AddConditions(VisualElement container, SerializedObject so)
@@ -314,9 +249,7 @@ namespace BovineLabs.Timeline.Essence.Editor
             }
 
             for (var i = 0; i < conditions.arraySize; i++)
-            {
-                container.Add(this.BuildCondition(conditions.GetArrayElementAtIndex(i), i));
-            }
+                container.Add(BuildCondition(conditions.GetArrayElementAtIndex(i), i));
         }
 
         private void AddActions(VisualElement container, ReactionAuthoring reaction)
@@ -325,10 +258,7 @@ namespace BovineLabs.Timeline.Essence.Editor
             var any = false;
             foreach (var c in reaction.GetComponents<MonoBehaviour>())
             {
-                if (c == null || !c.GetType().Name.StartsWith("Action", StringComparison.Ordinal))
-                {
-                    continue;
-                }
+                if (c == null || !c.GetType().Name.StartsWith("Action", StringComparison.Ordinal)) continue;
 
                 any = true;
                 var comp = c;
@@ -338,10 +268,7 @@ namespace BovineLabs.Timeline.Essence.Editor
                 container.Add(row);
             }
 
-            if (!any)
-            {
-                container.Add(Muted("    (no Action* components — add one to do something)"));
-            }
+            if (!any) container.Add(Muted("    (no Action* components — add one to do something)"));
         }
 
         private VisualElement BuildCondition(SerializedProperty cond, int index)
@@ -350,7 +277,7 @@ namespace BovineLabs.Timeline.Essence.Editor
             var name = schema != null ? schema.name : "(no condition)";
             var target = EnumVal<Target>(cond.FindPropertyRelative("Target"));
             var op = EnumVal<Equality>(cond.FindPropertyRelative("Operation"));
-            var custom = cond.FindPropertyRelative("ComparisonMode")?.enumValueIndex == 1; // 0=Constant, 1=Custom
+            var custom = cond.FindPropertyRelative("ComparisonMode")?.enumValueIndex == 1;
 
             string value;
             string warn = null;
@@ -359,7 +286,8 @@ namespace BovineLabs.Timeline.Essence.Editor
                 var statProp = cond.FindPropertyRelative("CustomValue")?.FindPropertyRelative("stat");
                 var statRef = statProp?.objectReferenceValue;
                 value = statRef != null ? $"Stat:{statRef.name}" : "Custom";
-                warn = "⚠ custom-stat threshold resolves to 0 until that stat changes at runtime — use a Constant for a static threshold.";
+                warn =
+                    "⚠ custom-stat threshold resolves to 0 until that stat changes at runtime — use a Constant for a static threshold.";
             }
             else
             {
@@ -370,23 +298,15 @@ namespace BovineLabs.Timeline.Essence.Editor
             var line = $"    [{index}] {name} · {target} {Symbol(op)} {value}";
             var ve = new VisualElement();
             ve.Add(new Label(line));
-            if (warn != null)
-            {
-                ve.Add(Warn("        " + warn));
-            }
+            if (warn != null) ve.Add(Warn("        " + warn));
 
             return ve;
         }
 
-        // ---- Live reads (best-effort; never throw) -----------------------------------------------------------
-
         private static bool TryGetLiveStats(GameObject go, out DynamicHashMap<StatKey, StatValue> map)
         {
             map = default;
-            if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Stat>(e))
-            {
-                return false;
-            }
+            if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Stat>(e)) return false;
 
             map = em.GetBuffer<Stat>(e).AsMap();
             return true;
@@ -395,51 +315,33 @@ namespace BovineLabs.Timeline.Essence.Editor
         private static bool TryGetLiveIntrinsics(GameObject go, out DynamicHashMap<IntrinsicKey, int> map)
         {
             map = default;
-            if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Intrinsic>(e))
-            {
-                return false;
-            }
+            if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Intrinsic>(e)) return false;
 
             map = em.GetBuffer<Intrinsic>(e).AsMap();
             return true;
         }
 
-        // Resolve the selected GameObject -> its baked Entity via the authoritative bake-time authoring mapping
-        // (EntityGuid / originating instance id), NOT by debug-name. Names are not unique (prefab instances,
-        // many actors share 'Enemy'/'Player'), and query order is not stable across runs — name-matching would
-        // attribute another actor's live stats to this one and flip between runs. When more than one Essence-carrying
-        // entity maps back to this exact GameObject the result is genuinely ambiguous, so we bail rather than guess.
         private static bool TryGetEntity(GameObject go, out EntityManager em, out Entity entity)
         {
             em = default;
             entity = Entity.Null;
             try
             {
-                if (!Application.isPlaying)
-                {
-                    return false;
-                }
+                if (!Application.isPlaying) return false;
 
                 var world = World.DefaultGameObjectInjectionWorld;
-                if (world is not { IsCreated: true })
-                {
-                    return false;
-                }
+                if (world is not { IsCreated: true }) return false;
 
                 em = world.EntityManager;
-                using var candidates = new Unity.Collections.NativeList<Entity>(Unity.Collections.Allocator.Temp);
+                using var candidates = new NativeList<Entity>(Allocator.Temp);
                 em.Debug.GetEntitiesForAuthoringObject(go, candidates);
 
                 foreach (var e in candidates)
                 {
-                    if (!em.HasBuffer<Stat>(e) && !em.HasBuffer<Intrinsic>(e))
-                    {
-                        continue;
-                    }
+                    if (!em.HasBuffer<Stat>(e) && !em.HasBuffer<Intrinsic>(e)) continue;
 
                     if (entity != Entity.Null)
                     {
-                        // Multiple Essence-carrying entities map to this GameObject — ambiguous, do not silently pick one.
                         entity = Entity.Null;
                         return false;
                     }
@@ -455,13 +357,15 @@ namespace BovineLabs.Timeline.Essence.Editor
             }
         }
 
-        // ---- Legend ------------------------------------------------------------------------------------------
-
         private static VisualElement BuildLegend()
         {
             var f = Section("Legend / cheat-sheet");
             f.value = false;
-            void L(string s) => f.Add(Muted(s));
+
+            void L(string s)
+            {
+                f.Add(Muted(s));
+            }
 
             L("STATS: Value = Σ(Added) × (1 + Σ Increased) × Π(1 + More).  100 = 1.0× (StatValue.ToInt).");
             L("  Added/Subtracted = flat ±.  Increased/Reduced = ± percent (0.1 = 10%).  More/Less = × multiplier.");
@@ -470,36 +374,35 @@ namespace BovineLabs.Timeline.Essence.Editor
             L("  Constant = fixed threshold (bakes the number).  Custom = compare to a live Stat/Intrinsic.");
             L("  ⚠ Custom-vs-static-stat resolves to 0 until the stat changes — prefer Constant for fixed thresholds.");
             L("  Features: Condition = gates active; Value = records value; Accumulate = both, per frame.");
-            L("KEYS/IDS auto-assign on import; id 0 = unusable (re-import). Registries: EssenceSettings, ReactionSettings.");
+            L(
+                "KEYS/IDS auto-assign on import; id 0 = unusable (re-import). Registries: EssenceSettings, ReactionSettings.");
             return f;
         }
-
-        // ---- helpers -----------------------------------------------------------------------------------------
 
         private static T EnumVal<T>(SerializedProperty p)
             where T : struct, Enum
         {
-            if (p == null)
-            {
-                return default;
-            }
+            if (p == null) return default;
 
             var values = (T[])Enum.GetValues(typeof(T));
             var i = p.enumValueIndex;
             return i >= 0 && i < values.Length ? values[i] : default;
         }
 
-        private static string Symbol(Equality op) => op switch
+        private static string Symbol(Equality op)
         {
-            Equality.Equal => "==",
-            Equality.NotEqual => "!=",
-            Equality.GreaterThan => ">",
-            Equality.GreaterThanEqual => ">=",
-            Equality.LessThan => "<",
-            Equality.LessThanEqual => "<=",
-            Equality.Between => "in",
-            _ => "(any)",
-        };
+            return op switch
+            {
+                Equality.Equal => "==",
+                Equality.NotEqual => "!=",
+                Equality.GreaterThan => ">",
+                Equality.GreaterThanEqual => ">=",
+                Equality.LessThan => "<",
+                Equality.LessThanEqual => "<=",
+                Equality.Between => "in",
+                _ => "(any)"
+            };
+        }
 
         private static string Pretty(string typeName)
         {

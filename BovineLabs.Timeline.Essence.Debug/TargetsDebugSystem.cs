@@ -89,12 +89,13 @@ namespace BovineLabs.Essence.Debug
             names.Dispose(state.Dependency);
         }
 
-        private static void AddName(ref SystemState state, ref NativeHashMap<Entity, FixedString64Bytes> names, Entity e)
+        private static void AddName(ref SystemState state, ref NativeHashMap<Entity, FixedString64Bytes> names,
+            Entity e)
         {
             if (e == Entity.Null || names.ContainsKey(e))
                 return;
 
-            state.EntityManager.GetName(e, out FixedString64Bytes name);
+            state.EntityManager.GetName(e, out var name);
             names.Add(e, name);
         }
 
@@ -115,7 +116,6 @@ namespace BovineLabs.Essence.Debug
                     return LocalTransformLookup[e].Position;
                 return fallback;
             }
-
 
             private static readonly Color ColorOwner = TimelineDebugColors.OwnerLink;
             private static readonly Color ColorSource = TimelineDebugColors.SourceLink;
@@ -159,7 +159,6 @@ namespace BovineLabs.Essence.Debug
             {
                 if (target == Entity.Null)
                 {
-                    // Null slots are clutter at distance; only spell them out up close.
                     if (tier != DebugTier.Close)
                         return;
 
@@ -257,11 +256,9 @@ namespace BovineLabs.Essence.Debug
                 var dir = math.normalize(end - lines[lineLength - 4]);
                 Drawer.Arrow(end - dir * 0.1f, dir * 0.25f, color);
 
-                // Mid: which slot this tether is — short label only.
                 if (tier == DebugTier.Mid)
                     Drawer.Text32(mid + new float3(0, 0.2f, 0), slot, color, 11f);
 
-                // Close: the full slot-name readout + measured span.
                 if (tier == DebugTier.Close)
                 {
                     Drawer.Text128(mid + new float3(0, 0.2f, 0), label, color, 11f);
@@ -316,7 +313,7 @@ namespace BovineLabs.Essence.Debug
                 Drawer.Arrow(pos - dir * 0.05f, dir * 0.2f, color);
 
                 var topPos = pos + new float3(0, height + 0.1f, 0);
-                // Mid: short slot label; Close: the full slot-name readout.
+
                 if (tier == DebugTier.Mid)
                     Drawer.Text32(topPos, slot, color, 10f);
                 else if (tier == DebugTier.Close)

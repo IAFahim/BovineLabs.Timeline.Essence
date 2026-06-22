@@ -15,15 +15,10 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
     [UnityCliTool(
         Name = "schema_list",
         Group = "vex",
-        Description = "Read-only asset sweep of Essence/Reaction schemas (stat / intrinsic / event): assetPath, runtime key, type-specific fields, and whether each is registered in its settings registry (EssenceSettings for stats+intrinsics, ReactionSettings for events).")]
+        Description =
+            "Read-only asset sweep of Essence/Reaction schemas (stat / intrinsic / event): assetPath, runtime key, type-specific fields, and whether each is registered in its settings registry (EssenceSettings for stats+intrinsics, ReactionSettings for events).")]
     public static class SchemaListTool
     {
-        public class Parameters
-        {
-            [ToolParameter("Which schema family to list: 'stat' | 'intrinsic' | 'event' | 'all' (default 'all').")]
-            public string Type { get; set; }
-        }
-
         private static readonly HashSet<string> ValidTypes = new() { "all", "stat", "intrinsic", "event" };
 
         public static object HandleCommand(JObject @params)
@@ -31,11 +26,10 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             var p = new Params(@params);
             try
             {
-                string type = (p.OptString("type", "all") ?? "all").Trim().ToLowerInvariant();
+                var type = (p.OptString("type", "all") ?? "all").Trim().ToLowerInvariant();
                 if (!ValidTypes.Contains(type))
-                {
-                    throw new ToolException("BAD_VALUE", $"Unknown type '{type}'.", "Expected one of: stat, intrinsic, event, all.");
-                }
+                    throw new ToolException("BAD_VALUE", $"Unknown type '{type}'.",
+                        "Expected one of: stat, intrinsic, event, all.");
 
                 var essence = EditorSettingsUtility.GetSettings<EssenceSettings>();
                 var reaction = EditorSettingsUtility.GetSettings<ReactionSettings>();
@@ -44,17 +38,22 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 var intrinsics = Wants(type, "intrinsic") ? ListIntrinsics(essence) : null;
                 var events = Wants(type, "event") ? ListEvents(reaction) : null;
 
-                int count = (stats?.Count ?? 0) + (intrinsics?.Count ?? 0) + (events?.Count ?? 0);
+                var count = (stats?.Count ?? 0) + (intrinsics?.Count ?? 0) + (events?.Count ?? 0);
 
                 return ToolEnvelope.Ok(
                     $"{count} schema(s).",
-                    result: new { stats, intrinsics, events });
+                    new { stats, intrinsics, events });
             }
-            catch (ToolException e) { return ToolEnvelope.FromException(e); }
+            catch (ToolException e)
+            {
+                return ToolEnvelope.FromException(e);
+            }
         }
 
-        // A requested type is included when the caller asked for it explicitly or for "all".
-        private static bool Wants(string requested, string family) => requested == "all" || requested == family;
+        private static bool Wants(string requested, string family)
+        {
+            return requested == "all" || requested == family;
+        }
 
         private static HashSet<Object> RegisteredSet(IEnumerable<Object> registered)
         {
@@ -67,11 +66,11 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             return Load<StatSchemaObject>().Select(s => (object)new
             {
                 assetPath = AssetDatabase.GetAssetPath(s),
-                name = s.name,
+                s.name,
                 key = s.Key,
                 conditionType = s.ConditionType,
                 isGlobal = s.IsGlobal,
-                registered = registered.Contains(s),
+                registered = registered.Contains(s)
             }).ToList();
         }
 
@@ -81,7 +80,7 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             return Load<IntrinsicSchemaObject>().Select(i => (object)new
             {
                 assetPath = AssetDatabase.GetAssetPath(i),
-                name = i.name,
+                i.name,
                 key = i.Key,
                 conditionType = i.ConditionType,
                 isGlobal = i.IsGlobal,
@@ -90,7 +89,7 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 max = i.Range.y,
                 minStat = i.MinStat != null ? i.MinStat.name : null,
                 maxStat = i.MaxStat != null ? i.MaxStat.name : null,
-                registered = registered.Contains(i),
+                registered = registered.Contains(i)
             }).ToList();
         }
 
@@ -100,13 +99,13 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             return Load<ConditionEventObject>().Select(e => (object)new
             {
                 assetPath = AssetDatabase.GetAssetPath(e),
-                name = e.name,
+                e.name,
                 key = e.Key,
                 conditionType = e.ConditionType,
                 isGlobal = e.IsGlobal,
                 isEvent = e.IsEvent,
                 customDataType = e.CustomDataType != null ? e.CustomDataType.FullName : null,
-                registered = registered.Contains(e),
+                registered = registered.Contains(e)
             }).ToList();
         }
 
@@ -117,6 +116,12 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 .Select(AssetDatabase.LoadAssetAtPath<T>)
                 .Where(a => a != null)
                 .OrderBy(a => a.name);
+        }
+
+        public class Parameters
+        {
+            [ToolParameter("Which schema family to list: 'stat' | 'intrinsic' | 'event' | 'all' (default 'all').")]
+            public string Type { get; set; }
         }
     }
 }

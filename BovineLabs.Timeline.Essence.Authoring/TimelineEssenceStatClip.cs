@@ -24,20 +24,21 @@ namespace BovineLabs.Timeline.Essence.Authoring
         [Tooltip("How value is applied (Added/Subtracted/Increased/Reduced/More/Less).")]
         public StatAuthoringType modifyType = StatAuthoringType.Added;
 
-        [Tooltip("Modifier amount. For Added/Subtracted the stat reads value/100 (x100 fixed-point): typing 5 yields +0.05 unless you scale by 100.")]
+        [Tooltip(
+            "Modifier amount. For Added/Subtracted the stat reads value/100 (x100 fixed-point): typing 5 yields +0.05 unless you scale by 100.")]
         public float value;
 
         public override double duration => 1;
 
-        // No Blending: this clip is edge-triggered (modifier added on enter, removed on exit by identity);
-        // the system never reads ClipWeight, so a blend handle would be a UI control that does nothing.
         public ClipCaps clipCaps => ClipCaps.Looping;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             if (stat == null)
             {
-                Debug.LogError($"{nameof(TimelineEssenceStatClip)} '{name}' has no Stat assigned; the clip will not modify any stat.", this);
+                Debug.LogError(
+                    $"{nameof(TimelineEssenceStatClip)} '{name}' has no Stat assigned; the clip will not modify any stat.",
+                    this);
                 return;
             }
 

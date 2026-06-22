@@ -460,8 +460,6 @@ namespace BovineLabs.Essence.Debug
             private const float BeaconHeight = 1.9f;
             private const float BeaconRadius = 1.5f;
 
-            // Pulsing health-colored ring above the entity, fill taken from the named stat. Opt-in: only runs
-            // when a health stat name is configured and the visual overlay is enabled.
             private void DrawHealthBeacon(float3 head, int entityIndex, in ArchetypeChunk chunk,
                 DynamicBuffer<Stat> stats)
             {

@@ -59,11 +59,6 @@ namespace BovineLabs.Timeline.Essence
             state.Dependency = gatherRemoveJob.ScheduleParallel(state.Dependency);
             state.Dependency = gatherAddJob.ScheduleParallel(state.Dependency);
 
-            // Track each clip entity's currently-applied modifier in an ICleanupComponentData. If a clip entity is
-            // destroyed while still active (director/sub-scene torn down before the deactivation edge fires), neither
-            // GatherAddJob nor GatherRemoveJob runs the balancing remove and the modifier would leak onto the live
-            // target forever. The cleanup component survives the destroy as a zombie, letting GatherDestroyedJob
-            // reclaim the orphaned modifier by SourceEntity = the (now-dead) clip entity.
             state.Dependency = new AttachCleanupJob { ECB = ecb }.ScheduleParallel(state.Dependency);
             state.Dependency = new SyncCleanupJob().ScheduleParallel(state.Dependency);
             state.Dependency = new GatherDestroyedJob
@@ -81,8 +76,6 @@ namespace BovineLabs.Timeline.Essence
             }.Schedule(state.Dependency);
         }
 
-        // Lingers on a destroyed clip entity as a zombie so the orphaned StatModifier can be reclaimed from the still
-        // -live target. Target mirrors TimelineEssenceStatState.AppliedTarget (Entity.Null when nothing is applied).
         private struct StatModifierCleanup : ICleanupComponentData
         {
             public Entity Target;
@@ -150,8 +143,6 @@ namespace BovineLabs.Timeline.Essence
             }
         }
 
-        // Attaches the cleanup marker to every stat clip entity once, seeding it with the current applied target so
-        // reclamation is correct even if the entity is destroyed the same frame the marker is added.
         [BurstCompile]
         [WithNone(typeof(StatModifierCleanup))]
         private partial struct AttachCleanupJob : IJobEntity
@@ -164,7 +155,6 @@ namespace BovineLabs.Timeline.Essence
             }
         }
 
-        // Keeps the zombie-surviving marker in sync with the live applied target every frame.
         [BurstCompile]
         private partial struct SyncCleanupJob : IJobEntity
         {
@@ -174,9 +164,6 @@ namespace BovineLabs.Timeline.Essence
             }
         }
 
-        // Runs on clip entities that were destroyed while a modifier was still applied: the cleanup marker outlives the
-        // entity's IComponentData, so TimelineEssenceStatState is gone. Reclaim the orphaned modifier from the target
-        // (no-op if it was already removed by a normal deactivation edge) and release the zombie.
         [BurstCompile]
         [WithNone(typeof(TimelineEssenceStatState))]
         private partial struct GatherDestroyedJob : IJobEntity

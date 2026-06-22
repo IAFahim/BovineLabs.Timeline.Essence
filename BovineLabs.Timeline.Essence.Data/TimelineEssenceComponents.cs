@@ -38,11 +38,9 @@ namespace BovineLabs.Timeline.Essence.Data
     public enum EssenceTickMode : byte
     {
         Event,
-        Intrinsic,
+        Intrinsic
     }
 
-    // Fires TickCount discrete ticks across the clip window, their timing shaped by Curve (a CDF over
-    // normalized time). Mode selects whether a tick is a ConditionEvent or an Intrinsic change.
     public struct TimelineEssenceTickData : IComponentData
     {
         public Target RouteTo;
