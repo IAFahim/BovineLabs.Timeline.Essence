@@ -3,7 +3,6 @@ using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Essence
 {
@@ -31,13 +30,10 @@ namespace BovineLabs.Timeline.Essence
                 if (!clipActivePrevious.ValueRO) return;
 
                 var deltaTicks = timerData.DeltaTime.Value;
-                if (deltaTicks < 0) deltaTicks = -deltaTicks;
-
-                if (deltaTicks == 0) return;
-
                 var ticksPastStart = (localTime.Value - timeTransform.ClipIn).Value;
-                var windowTicks = (long)math.ceil(deltaTicks * timeTransform.Scale) + 1;
-                if (ticksPastStart >= 0 && ticksPastStart < windowTicks) clipActivePrevious.ValueRW = false;
+
+                if (LoopRefireMath.ShouldRearm(deltaTicks, ticksPastStart, timeTransform.Scale))
+                    clipActivePrevious.ValueRW = false;
             }
         }
     }

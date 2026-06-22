@@ -78,30 +78,25 @@ namespace BovineLabs.Timeline.Essence.Authoring
         private BlobAssetReference<DistributionCurveBlob> BuildCurve()
         {
             const int samples = 32;
+
+            var sampled = new NativeArray<float>(samples, Allocator.Temp);
+            for (var i = 0; i < samples; i++)
+            {
+                var t = i / (float)(samples - 1);
+                sampled[i] = math.max(0f, density?.Evaluate(t) ?? 1f);
+            }
+
+            var normalized = new NativeArray<float>(samples, Allocator.Temp);
+            CdfIntegration.BuildNormalizedCdf(sampled, normalized);
+            sampled.Dispose();
+
             using var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<DistributionCurveBlob>();
             var cdf = builder.Allocate(ref root.Cdf, samples);
+            for (var i = 0; i < samples; i++)
+                cdf[i] = normalized[i];
 
-            var running = new float[samples];
-            var previous = math.max(0f, density?.Evaluate(0f) ?? 1f);
-            var cumulative = 0f;
-            running[0] = 0f;
-            for (var i = 1; i < samples; i++)
-            {
-                var t = i / (float)(samples - 1);
-                var d = math.max(0f, density?.Evaluate(t) ?? 1f);
-                cumulative += 0.5f * (d + previous);
-                running[i] = cumulative;
-                previous = d;
-            }
-
-            if (cumulative > 0f)
-                for (var i = 0; i < samples; i++)
-                    cdf[i] = running[i] / cumulative;
-            else
-                for (var i = 0; i < samples; i++)
-                    cdf[i] = i / (float)(samples - 1);
-
+            normalized.Dispose();
             return builder.CreateBlobAssetReference<DistributionCurveBlob>(Allocator.Persistent);
         }
     }

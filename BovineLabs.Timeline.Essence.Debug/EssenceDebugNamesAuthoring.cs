@@ -23,7 +23,7 @@ namespace BovineLabs.Essence.Debug
         }
     }
 
-    public class EssenceDebugNamesBaker : Baker<SettingsAuthoring>
+    internal sealed class EssenceDebugNamesBaker : Baker<SettingsAuthoring>
     {
         public override void Bake(SettingsAuthoring authoring)
         {

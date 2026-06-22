@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Essence.Data
     public static class TimelineEssenceResolver
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryResolveTarget(
+        internal static bool TryResolveTarget(
             Target target,
             Entity binding,
             in UnsafeComponentLookup<Targets> targets,

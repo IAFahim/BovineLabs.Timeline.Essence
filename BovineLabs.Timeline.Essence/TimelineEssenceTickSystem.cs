@@ -12,7 +12,6 @@ using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Essence
 {
@@ -83,7 +82,7 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Mode != EssenceTickMode.Event || binding.Value == Entity.Null)
                     return;
 
-                if (!TickMath.TryAdvance(data, localTime, !previous.ValueRO, ref tickState, out var delta))
+                if (!TickMath.TryAdvance(data, (double)localTime.Value, !previous.ValueRO, ref tickState, out var delta))
                     return;
 
                 if (data.Event == ConditionKey.Null)
@@ -111,7 +110,7 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Mode != EssenceTickMode.Intrinsic || binding.Value == Entity.Null)
                     return;
 
-                if (!TickMath.TryAdvance(data, localTime, !previous.ValueRO, ref tickState, out var delta))
+                if (!TickMath.TryAdvance(data, (double)localTime.Value, !previous.ValueRO, ref tickState, out var delta))
                     return;
 
                 if (data.Intrinsic.Value == 0)
@@ -122,35 +121,6 @@ namespace BovineLabs.Timeline.Essence
                     IntrinsicWriters.TryGet(entity, out var writer))
                     writer.Add(data.Intrinsic, data.ValuePerTick * delta);
             }
-        }
-    }
-
-    internal static class TickMath
-    {
-        public static bool TryAdvance(in TimelineEssenceTickData data, in LocalTime localTime, bool justActivated,
-            ref TimelineEssenceTickState tickState, out int delta)
-        {
-            delta = 0;
-
-            if (justActivated)
-                tickState.Fired = 0;
-
-            if (data.TickCount <= 0 || !data.Curve.IsCreated)
-                return false;
-
-            var t = data.Duration > 0f ? math.saturate((float)(double)localTime.Value / data.Duration) : 1f;
-            var target = math.clamp((int)math.round(data.Curve.Value.Evaluate(t) * data.TickCount), 0,
-                data.TickCount);
-
-            delta = target - tickState.Fired;
-            if (delta <= 0)
-            {
-                delta = 0;
-                return false;
-            }
-
-            tickState.Fired = target;
-            return true;
         }
     }
 }

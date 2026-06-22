@@ -56,6 +56,7 @@ namespace BovineLabs.Timeline.Essence
             _writers.Create(ref state);
         }
 
+        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _intrinsicChanges.Dispose();

@@ -9,6 +9,7 @@ namespace BovineLabs.Essence.Data
 
         public float Evaluate(float t)
         {
+            if (!math.isfinite(t)) return 0f;
             if (Cdf.Length == 0) return 0f;
             if (t <= 0f) return 0f;
             if (t >= 1f) return 1f;

@@ -101,18 +101,13 @@ namespace BovineLabs.Timeline.Essence
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data,
                 ref TimelineEssenceStatState state)
             {
-                if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
+                if (binding.Value == Entity.Null) return;
+
+                if (!StatModifierMath.TryBuildStatModifier(data.Stat, data.ModifyType, data.Value, out var modifier)) return;
 
                 if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
                         TargetsLookup, LinkSources, Links, out var target))
                 {
-                    var modifier = new StatModifier { Type = data.Stat, ModifyType = data.ModifyType };
-
-                    if (data.ModifyType == StatModifyType.Added)
-                        modifier.Value = (int)data.Value;
-                    else
-                        modifier.ValueFloat = data.Value;
-
                     state.AppliedTarget = target;
 
                     Mutations.Enqueue(new StatMutation

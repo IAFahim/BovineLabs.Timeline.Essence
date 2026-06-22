@@ -102,6 +102,27 @@ namespace BovineLabs.Timeline.Essence.Tests
         }
 
         [Test]
+        public void Evaluate_NaN_ReturnsZero()
+        {
+            using var blob = CreateBlob(0f, 0.5f, 1f);
+            Assert.AreEqual(0f, blob.Value.Evaluate(float.NaN));
+        }
+
+        [Test]
+        public void Evaluate_PositiveInfinity_ReturnsZero()
+        {
+            using var blob = CreateBlob(0f, 0.5f, 1f);
+            Assert.AreEqual(0f, blob.Value.Evaluate(float.PositiveInfinity));
+        }
+
+        [Test]
+        public void Evaluate_NegativeInfinity_ReturnsZero()
+        {
+            using var blob = CreateBlob(0f, 0.5f, 1f);
+            Assert.AreEqual(0f, blob.Value.Evaluate(float.NegativeInfinity));
+        }
+
+        [Test]
         public void Evaluate_EmptyCdf_ReturnsZero()
         {
             using var blob = CreateBlob();

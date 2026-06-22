@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private ConditionEventWriter.Lookup _writers;
 
-        private EntityQuery _query;
+        private EntityQuery _activeClipQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Essence
             _eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
             _uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
-            _query = new EntityQueryBuilder(Allocator.Temp)
+            _activeClipQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<TrackBinding, TimelineEssenceEventData, ClipActive>()
                 .WithDisabled<ClipActivePrevious>()
                 .Build(ref state);
@@ -50,6 +50,7 @@ namespace BovineLabs.Timeline.Essence
             _writers.Create(ref state);
         }
 
+        [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _eventChanges.Dispose();
@@ -66,8 +67,8 @@ namespace BovineLabs.Timeline.Essence
             _writers.Update(ref state);
             _uniqueKeySet.Clear();
 
-            var activeCount = _query.CalculateEntityCount();
-            if (_uniqueKeySet.Capacity < activeCount) _uniqueKeySet.Capacity = activeCount;
+            var activeClipCount = _activeClipQuery.CalculateEntityCount();
+            if (_uniqueKeySet.Capacity < activeClipCount) _uniqueKeySet.Capacity = activeClipCount;
 
             state.Dependency = new GatherJob
             {
