@@ -208,7 +208,7 @@ namespace BovineLabs.Essence.Debug
                 display.Append(label);
                 if (Names.TryGetValue(target, out var name))
                 {
-                    display.Append("-");
+                    display.Append('-');
                     display.Append(name);
                 }
 
