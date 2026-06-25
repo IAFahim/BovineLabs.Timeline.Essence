@@ -11,38 +11,12 @@ using Object = UnityEngine.Object;
 
 namespace BovineLabs.Essence.Debug
 {
-    public struct EssenceDebugNames : IComponentData
-    {
-        public BlobAssetReference<Data> Value;
-
-        public struct Data
-        {
-            public BlobHashMap<ushort, FixedString32Bytes> StatNames;
-            public BlobHashMap<ushort, FixedString32Bytes> IntrinsicNames;
-            public BlobHashMap<ushort, FixedString32Bytes> EventNames;
-        }
-    }
-
     internal sealed class EssenceDebugNamesBaker : Baker<SettingsAuthoring>
     {
+        // EssenceDebugNames now lives in the runtime BovineLabs.Timeline.Essence assembly, so the
+        // baked type resolves in player builds (a component serialized into a subscene must be
+        // runtime). This baker + the debug systems that read it stay editor-only.
         public override void Bake(SettingsAuthoring authoring)
-        {
-            // ponytail: DISABLED. EssenceDebugNames is an IComponentData declared in an
-            // editor-only assembly (this .Debug asmdef has defineConstraints:["UNITY_EDITOR"]
-            // and references Authoring/baking assemblies, so it can never ship in a player).
-            // Baking it onto the SettingsAuthoring entity serialized the type into the Game
-            // World / Service World subscenes; the player runtime then can't resolve the type
-            // hash and the ENTIRE entity section fails to load ("Cannot find TypeIndex for
-            // type hash ..."), so nothing in that subscene (incl. the cube) appears.
-            // Editor-only types must not be serialized into shipped subscenes.
-            // Cost: the editor Essence debug name overlay loses its baked names.
-            // Proper fix if those overlays are wanted: move the EssenceDebugNames struct into a
-            // runtime assembly (keep this baker + the debug systems editor-only) so the type
-            // exists at runtime, then re-enable this bake.
-        }
-
-        // ReSharper disable once UnusedMember.Local - kept for the proper-fix path above.
-        private void BakeAll(SettingsAuthoring authoring)
         {
             var essence = AuthoringSettingsUtility.GetSettings<EssenceSettings>();
             var reaction = AuthoringSettingsUtility.GetSettings<ReactionSettings>();
