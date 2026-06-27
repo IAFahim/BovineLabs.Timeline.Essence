@@ -21,6 +21,10 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
                 Event = Event,
                 Value = Value
             });
+
+            // Delivery latch starts disabled; armed on the clip's first rising edge at runtime.
+            builder.AddComponent<TimelineEssenceDeliveryPending>();
+            builder.SetComponentEnabled<TimelineEssenceDeliveryPending>(false);
         }
     }
 }

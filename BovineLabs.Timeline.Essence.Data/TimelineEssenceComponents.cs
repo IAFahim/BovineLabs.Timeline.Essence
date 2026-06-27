@@ -21,6 +21,18 @@ namespace BovineLabs.Timeline.Essence.Data
         public int Amount;
     }
 
+    /// <summary>
+    /// Enableable latch shared by the Event and Intrinsic clips: enabled while a clip activation still owes a
+    /// delivery. Armed on the clip's rising edge, cleared once the payload is actually delivered (binding, target,
+    /// and writer all resolved). This decouples delivery from the single-frame ClipActivePrevious edge — which the
+    /// core ClipActivePreviousSystem consumes unconditionally — so a transiently-unresolved frame retries across
+    /// the whole active window instead of silently dropping the event. A clip only ever carries Event XOR Intrinsic
+    /// data, so the two systems' queries partition cleanly on the one component.
+    /// </summary>
+    public struct TimelineEssenceDeliveryPending : IComponentData, IEnableableComponent
+    {
+    }
+
     public struct TimelineEssenceStatData : IComponentData
     {
         public Target RouteTo;

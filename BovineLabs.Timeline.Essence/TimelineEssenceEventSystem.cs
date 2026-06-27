@@ -1,4 +1,5 @@
 using System;
+using BovineLabs.Core;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -32,6 +33,11 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private ConditionEventWriter.Lookup _writers;
 
+        // Writer-existence pre-check: a ConditionEventWriter needs both the ConditionEvent buffer and the
+        // EventsDirty enableable. Checking them up-front folds the ApplyJob "no writer" silent-drop into the retry.
+        private BufferLookup<ConditionEvent> _conditionEvents;
+        private ComponentLookup<EventsDirty> _eventsDirty;
+
         private EntityQuery _activeClipQuery;
 
         [BurstCompile]
@@ -42,11 +48,13 @@ namespace BovineLabs.Timeline.Essence
             _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             _activeClipQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<TrackBinding, TimelineEssenceEventData, ClipActive>()
-                .WithDisabled<ClipActivePrevious>()
+                .WithPresent<TimelineEssenceDeliveryPending>()
                 .Build(ref state);
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _conditionEvents = state.GetBufferLookup<ConditionEvent>(true);
+            _eventsDirty = state.GetComponentLookup<EventsDirty>(true);
             _writers.Create(ref state);
         }
 
@@ -64,6 +72,8 @@ namespace BovineLabs.Timeline.Essence
             _targetsLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
+            _conditionEvents.Update(ref state);
+            _eventsDirty.Update(ref state);
             _writers.Update(ref state);
             _uniqueKeySet.Clear();
 
@@ -76,7 +86,18 @@ namespace BovineLabs.Timeline.Essence
                 UniqueKeys = _uniqueKeySet.AsParallelWriter(),
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
-                Links = _linkLookup
+                Links = _linkLookup,
+                ConditionEvents = _conditionEvents,
+                EventsDirty = _eventsDirty
+            }.ScheduleParallel(state.Dependency);
+
+            // A clip that ends still owing a delivery never resolved its target/binding/writer — surface it once
+            // (instead of a silent drop) and clear the latch so the next activation re-arms cleanly.
+            var hasLogger = SystemAPI.TryGetSingleton<BLLogger>(out var logger);
+            state.Dependency = new DiagnoseMissedJob
+            {
+                LogEnabled = hasLogger,
+                Logger = logger
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = _eventChanges.Apply(state.Dependency, out var reader);
@@ -99,7 +120,10 @@ namespace BovineLabs.Timeline.Essence
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
-        [WithDisabled(typeof(ClipActivePrevious))]
+        // EnabledRef params would otherwise implicitly filter to ENABLED — but the edge frame has
+        // ClipActivePrevious disabled and the latch starts disabled, so match them by presence and read the state.
+        [WithPresent(typeof(ClipActivePrevious))]
+        [WithPresent(typeof(TimelineEssenceDeliveryPending))]
         private partial struct GatherJob : IJobEntity
         {
             public NativeParallelMultiHashMapFallback<Entity, EventAmount>.ParallelWriter EventChanges;
@@ -108,16 +132,65 @@ namespace BovineLabs.Timeline.Essence
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
+            [ReadOnly] public BufferLookup<ConditionEvent> ConditionEvents;
+            [ReadOnly] public ComponentLookup<EventsDirty> EventsDirty;
 
-            private void Execute(in TrackBinding binding, in TimelineEssenceEventData data)
+            private void Execute(
+                in TrackBinding binding,
+                in TimelineEssenceEventData data,
+                EnabledRefRO<ClipActivePrevious> clipActivePrevious,
+                EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
-                if (data.Event == ConditionKey.Null || binding.Value == Entity.Null) return;
+                var isEdge = !clipActivePrevious.ValueRO;
+                var hasPayload = data.Event != ConditionKey.Null;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
-                        TargetsLookup, LinkSources, Links, out var target))
+                // Resolve the target only when something is (or just became) owed — and treat a missing
+                // ConditionEventWriter (no ConditionEvent buffer / EventsDirty) as not-yet-resolved so it retries
+                // instead of being dropped in ApplyJob.
+                var resolved = false;
+                var target = Entity.Null;
+                if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null
+                    && TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                        TargetsLookup, LinkSources, Links, out target)
+                    && ConditionEvents.HasBuffer(target) && EventsDirty.HasComponent(target))
+                {
+                    resolved = true;
+                }
+
+                var outcome = EssenceDeliveryGate.Evaluate(isEdge, pending.ValueRO, hasPayload, resolved, out var next);
+                pending.ValueRW = next;
+
+                if (outcome == EssenceDeliveryGate.Outcome.Fire)
                 {
                     EventChanges.Add(target, new EventAmount(data.Event, data.Value));
                     UniqueKeys.Add(target);
+                }
+            }
+        }
+
+        // Clip ended while still owing a delivery: the target/binding/writer never resolved during the whole
+        // active window. Clear the latch (so the next activation re-arms) and warn once instead of dropping silently.
+        [BurstCompile]
+        [WithAll(typeof(TimelineEssenceEventData))]
+        [WithDisabled(typeof(ClipActive))]
+        private partial struct DiagnoseMissedJob : IJobEntity
+        {
+            public bool LogEnabled;
+            public BLLogger Logger;
+
+            private void Execute(EnabledRefRW<TimelineEssenceDeliveryPending> pending)
+            {
+                if (!pending.ValueRO)
+                {
+                    return;
+                }
+
+                pending.ValueRW = false;
+
+                if (LogEnabled)
+                {
+                    Logger.LogWarning512(
+                        "[Essence] Event clip ended without delivering: target/binding/writer never resolved during the clip. Check routeTo and that the target carries a ConditionEventWriter (ReactionAuthoring).");
                 }
             }
         }
