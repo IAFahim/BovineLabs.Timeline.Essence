@@ -1,0 +1,40 @@
+{
+    "name": "BovineLabs.Timeline.Essence.Sample.EssenceShowcase",
+    "rootNamespace": "",
+    "references": [
+        "BovineLabs.Timeline.Essence.Authoring",
+        "BovineLabs.Timeline.Essence.Data",
+        "BovineLabs.Timeline.Essence",
+        "BovineLabs.Essence.Authoring",
+        "BovineLabs.Essence.Data",
+        "BovineLabs.Reaction.Authoring",
+        "BovineLabs.Reaction.Data",
+        "BovineLabs.Core",
+        "BovineLabs.Core.Authoring",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Core.Extensions.Authoring",
+        "BovineLabs.Timeline.Authoring",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Timeline.Core.Authoring",
+        "BovineLabs.Timeline.EntityLinks.Authoring",
+        "BovineLabs.Timeline.EntityLinks.Data",
+        "Unity.Mathematics",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Scenes",
+        "Unity.Timeline",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

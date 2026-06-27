@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "unity": "6000.6",
   "unityRelease": "0a3",
-  "description": "Replace this with your own description of the package. \n\nFor best results, use this text to summarize: \n\u25AA What the package does \n\u25AA How it can benefit the user \n\nNote: Special formatting characters are supported, including line breaks ('\\n') and bullets ('\\u25AA').",
+  "description": "Replace this with your own description of the package. \n\nFor best results, use this text to summarize: \n▪ What the package does \n▪ How it can benefit the user \n\nNote: Special formatting characters are supported, including line breaks ('\\n') and bullets ('\\u25AA').",
   "dependencies": {
     "com.unity.test-framework": "1.6.0"
   },
@@ -15,5 +15,12 @@
   },
   "changelogUrl": "https://example.com/changelog.html",
   "documentationUrl": "https://example.com/",
-  "licensesUrl": "https://example.com/licensing.html"
+  "licensesUrl": "https://example.com/licensing.html",
+  "samples": [
+    {
+      "displayName": "Essence Showcase",
+      "description": "Essence timeline grid: Stat, Intrinsic and Event tracks across 11 directors / 15 clips demonstrating modifiers, counters and transient events.",
+      "path": "Sample~/Essence Showcase"
+    }
+  ]
 }
