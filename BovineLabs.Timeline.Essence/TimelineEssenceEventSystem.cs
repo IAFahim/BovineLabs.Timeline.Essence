@@ -142,7 +142,8 @@ namespace BovineLabs.Timeline.Essence
                 EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
                 var isEdge = !clipActivePrevious.ValueRO;
-                var hasPayload = data.Event != ConditionKey.Null;
+                // Value==0 is a no-op the ConditionEventWriter rejects (Check.Assume), so treat it as a dead config (Drop), not a transient miss.
+                var hasPayload = data.Event != ConditionKey.Null && data.Value != 0;
 
                 // Resolve the target only when something is (or just became) owed — and treat a missing
                 // ConditionEventWriter (no ConditionEvent buffer / EventsDirty) as not-yet-resolved so it retries
@@ -173,6 +174,7 @@ namespace BovineLabs.Timeline.Essence
         [BurstCompile]
         [WithAll(typeof(TimelineEssenceEventData))]
         [WithDisabled(typeof(ClipActive))]
+        [WithAll(typeof(TimelineEssenceDeliveryPending))] // only walk clips that still owe a delivery, not every inactive clip
         private partial struct DiagnoseMissedJob : IJobEntity
         {
             public bool LogEnabled;
@@ -231,7 +233,8 @@ namespace BovineLabs.Timeline.Essence
                         AddOrAccumulate(ref values, value, ref writer);
                 }
 
-                foreach (var e in values) writer.Trigger(e.Event, e.Amount);
+                // Skip net-zero accumulations (e.g. a +N and a -N on the same target+key): ConditionEventWriter.Trigger asserts value != 0.
+                foreach (var e in values) if (e.Amount != 0) writer.Trigger(e.Event, e.Amount);
             }
 
             private static void AddOrAccumulate(ref FixedList4096Bytes<EventAmount> values, EventAmount value,
@@ -252,7 +255,7 @@ namespace BovineLabs.Timeline.Essence
                     return;
                 }
 
-                writer.Trigger(value.Event, value.Amount);
+                if (value.Amount != 0) writer.Trigger(value.Event, value.Amount);
             }
         }
 

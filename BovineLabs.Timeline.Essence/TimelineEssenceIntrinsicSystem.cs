@@ -174,6 +174,7 @@ namespace BovineLabs.Timeline.Essence
         [BurstCompile]
         [WithAll(typeof(TimelineEssenceIntrinsicData))]
         [WithDisabled(typeof(ClipActive))]
+        [WithAll(typeof(TimelineEssenceDeliveryPending))] // only walk clips that still owe a delivery, not every inactive clip
         private partial struct DiagnoseMissedJob : IJobEntity
         {
             public bool LogEnabled;

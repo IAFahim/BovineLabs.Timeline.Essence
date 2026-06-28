@@ -92,6 +92,8 @@ namespace BovineLabs.Timeline.Essence
                         TargetsLookup, LinkSources, Links, out var entity) &&
                     EventWriters.TryGet(entity, out var writer))
                     writer.Trigger(data.Event, data.ValuePerTick * delta);
+                else
+                    tickState.Fired -= delta; // target/writer not resolved yet: un-commit so these ticks retry next frame instead of being silently lost
             }
         }
 
@@ -120,6 +122,8 @@ namespace BovineLabs.Timeline.Essence
                         TargetsLookup, LinkSources, Links, out var entity) &&
                     IntrinsicWriters.TryGet(entity, out var writer))
                     writer.Add(data.Intrinsic, data.ValuePerTick * delta);
+                else
+                    tickState.Fired -= delta; // target/writer not resolved yet: un-commit so these ticks retry next frame instead of being silently lost
             }
         }
     }

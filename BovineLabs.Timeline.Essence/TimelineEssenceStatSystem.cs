@@ -49,7 +49,8 @@ namespace BovineLabs.Timeline.Essence
                 Mutations = addStats.AsParallelWriter(),
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
-                Links = _linkLookup
+                Links = _linkLookup,
+                StatModifiers = SystemAPI.GetBufferLookup<StatModifiers>(true)
             };
             var gatherRemoveJob = new GatherRemoveJob
             {
@@ -90,23 +91,29 @@ namespace BovineLabs.Timeline.Essence
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
-        [WithDisabled(typeof(ClipActivePrevious))]
         private partial struct GatherAddJob : IJobEntity
         {
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
+            [ReadOnly] public BufferLookup<StatModifiers> StatModifiers;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data,
                 ref TimelineEssenceStatState state)
             {
+                // Retry every active frame until applied — not just the one-frame activation edge — so a late-resolving
+                // target/binding/buffer doesn't silently drop the whole while-active modifier. Cleared on deactivation.
+                if (state.AppliedTarget != Entity.Null) return;
+
                 if (binding.Value == Entity.Null) return;
 
                 if (!StatModifierMath.TryBuildStatModifier(data.Stat, data.ModifyType, data.Value, out var modifier)) return;
 
+                // HasBuffer pre-check folds ApplyJob's silent "no StatModifiers buffer" drop into the retry (don't latch AppliedTarget until the buffer exists).
                 if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
-                        TargetsLookup, LinkSources, Links, out var target))
+                        TargetsLookup, LinkSources, Links, out var target)
+                    && StatModifiers.HasBuffer(target))
                 {
                     state.AppliedTarget = target;
 
@@ -128,13 +135,14 @@ namespace BovineLabs.Timeline.Essence
             public NativeQueue<StatMutation>.ParallelWriter Mutations;
 
             private void Execute(Entity clipEntity, in TrackBinding binding, in TimelineEssenceStatData data,
-                in TimelineEssenceStatState state)
+                ref TimelineEssenceStatState state)
             {
                 if (data.Stat.Value == 0 || binding.Value == Entity.Null) return;
 
                 if (state.AppliedTarget == Entity.Null) return;
 
                 Mutations.Enqueue(new StatMutation { Target = state.AppliedTarget, Source = clipEntity });
+                state.AppliedTarget = Entity.Null; // clear so a re-activation re-applies (GatherAddJob now gates on this)
             }
         }
 
