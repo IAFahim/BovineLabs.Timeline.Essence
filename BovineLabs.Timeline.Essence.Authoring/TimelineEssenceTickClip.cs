@@ -51,6 +51,14 @@ namespace BovineLabs.Timeline.Essence.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            // Surface inert configurations loudly instead of baking a clip that silently does nothing.
+            if (mode == EssenceTickMode.Event && conditionEvent == null)
+                Debug.LogError($"TimelineEssenceTickClip '{name}': Event mode with no Condition Event assigned — the clip will do nothing.", conditionEvent);
+            else if (mode == EssenceTickMode.Intrinsic && intrinsic == null)
+                Debug.LogError($"TimelineEssenceTickClip '{name}': Intrinsic mode with no Intrinsic assigned — the clip will do nothing.", intrinsic);
+            else if (tickCount <= 0)
+                Debug.LogError($"TimelineEssenceTickClip '{name}': tickCount is {tickCount} — the clip will fire no ticks.");
+
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
             var curve = BuildCurve();

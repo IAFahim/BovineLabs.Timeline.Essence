@@ -88,10 +88,16 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Event == ConditionKey.Null)
                     return;
 
+                // Zero payload: the ticks were legitimately consumed but there is nothing to fire, and
+                // ConditionEventWriter.Trigger asserts value != 0 (throws in editor/dev builds). Do NOT un-commit.
+                var value = data.ValuePerTick * delta;
+                if (value == 0)
+                    return;
+
                 if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
                         TargetsLookup, LinkSources, Links, out var entity) &&
                     EventWriters.TryGet(entity, out var writer))
-                    writer.Trigger(data.Event, data.ValuePerTick * delta);
+                    writer.Trigger(data.Event, value);
                 else
                     tickState.Fired -= delta; // target/writer not resolved yet: un-commit so these ticks retry next frame instead of being silently lost
             }
