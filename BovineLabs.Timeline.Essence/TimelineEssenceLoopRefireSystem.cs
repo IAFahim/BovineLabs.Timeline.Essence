@@ -9,6 +9,7 @@ namespace BovineLabs.Timeline.Essence
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateBefore(typeof(TimelineEssenceIntrinsicSystem))]
     [UpdateBefore(typeof(TimelineEssenceEventSystem))]
+    [UpdateBefore(typeof(TimelineEssenceTickSystem))] // reset must land before TickSystem consumes justActivated this frame
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceLoopRefireSystem : ISystem
@@ -21,7 +22,7 @@ namespace BovineLabs.Timeline.Essence
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
-        [WithAny(typeof(TimelineEssenceIntrinsicData), typeof(TimelineEssenceEventData))]
+        [WithAny(typeof(TimelineEssenceIntrinsicData), typeof(TimelineEssenceEventData), typeof(TimelineEssenceTickData))]
         private partial struct RearmJob : IJobEntity
         {
             private void Execute(in LocalTime localTime, in TimeTransform timeTransform, in TimerData timerData,
