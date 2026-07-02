@@ -30,6 +30,13 @@ namespace BovineLabs.Timeline.Essence.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            if (conditionEvent == null)
+            {
+                Debug.LogError(
+                    $"{nameof(TimelineEssenceEventClip)} '{name}' has no ConditionEvent assigned; the clip will not fire any event.",
+                    this);
+                return;
+            }
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
             var builder = new EssenceEventBuilder

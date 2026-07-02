@@ -30,6 +30,13 @@ namespace BovineLabs.Timeline.Essence.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            if (intrinsic == null)
+            {
+                Debug.LogError(
+                    $"{nameof(TimelineEssenceIntrinsicClip)} '{name}' has no Intrinsic assigned; the clip will not change any counter.",
+                    this);
+                return;
+            }
             EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
 
             var builder = new EssenceIntrinsicBuilder
