@@ -111,7 +111,7 @@ namespace BovineLabs.Timeline.Essence
                 if (!StatModifierMath.TryBuildStatModifier(data.Stat, data.ModifyType, data.Value, out var modifier)) return;
 
                 // HasBuffer pre-check folds ApplyJob's silent "no StatModifiers buffer" drop into the retry (don't latch AppliedTarget until the buffer exists).
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
                         TargetsLookup, LinkSources, Links, out var target)
                     && StatModifiers.HasBuffer(target))
                 {

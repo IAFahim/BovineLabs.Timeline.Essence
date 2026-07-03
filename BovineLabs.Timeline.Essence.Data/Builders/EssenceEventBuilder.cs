@@ -1,13 +1,12 @@
 using BovineLabs.Core.EntityCommands;
 using BovineLabs.Reaction.Data.Conditions;
-using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 
 namespace BovineLabs.Timeline.Essence.Data.Builders
 {
     public struct EssenceEventBuilder
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public ConditionKey Event;
         public int Value;
 
@@ -16,8 +15,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         {
             builder.AddComponent(new TimelineEssenceEventData
             {
-                RouteTo = RouteTo,
-                RouteLinkKey = RouteLinkKey,
+                Route = Route,
                 Event = Event,
                 Value = Value
             });

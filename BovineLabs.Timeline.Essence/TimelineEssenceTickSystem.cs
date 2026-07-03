@@ -94,7 +94,7 @@ namespace BovineLabs.Timeline.Essence
                 if (value == 0)
                     return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
                         TargetsLookup, LinkSources, Links, out var entity) &&
                     EventWriters.TryGet(entity, out var writer))
                     writer.Trigger(data.Event, value);
@@ -124,7 +124,7 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Intrinsic.Value == 0)
                     return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
                         TargetsLookup, LinkSources, Links, out var entity) &&
                     IntrinsicWriters.TryGet(entity, out var writer))
                     writer.Add(data.Intrinsic, data.ValuePerTick * delta);

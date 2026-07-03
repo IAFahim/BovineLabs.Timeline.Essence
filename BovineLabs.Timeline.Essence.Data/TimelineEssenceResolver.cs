@@ -34,8 +34,7 @@ namespace BovineLabs.Timeline.Essence.Data
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryResolveLinkedTarget(
-            Target targetMode,
-            ushort linkKey,
+            in EntityLinkRef route,
             Entity self,
             in UnsafeComponentLookup<Targets> targetsLookup,
             in UnsafeComponentLookup<EntityLinkSource> sources,
@@ -44,16 +43,16 @@ namespace BovineLabs.Timeline.Essence.Data
         {
             resolved = Entity.Null;
 
-            if (!TryResolveTarget(targetMode, self, targetsLookup, out var target))
+            if (!TryResolveTarget(route.ReadRootFrom, self, targetsLookup, out var target))
                 return false;
 
-            if (linkKey == 0)
+            if (route.LinkKey == 0)
             {
                 resolved = target;
                 return true;
             }
 
-            if (EntityLinkResolver.TryResolve(target, linkKey, sources, links, out var linked) && linked != Entity.Null)
+            if (EntityLinkResolver.TryResolve(target, route.LinkKey, sources, links, out var linked) && linked != Entity.Null)
             {
                 resolved = linked;
                 return true;

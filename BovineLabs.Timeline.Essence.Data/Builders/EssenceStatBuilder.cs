@@ -1,14 +1,13 @@
 using BovineLabs.Core.EntityCommands;
 using BovineLabs.Essence.Data;
-using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence.Data.Builders
 {
     public struct EssenceStatBuilder
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public StatKey Stat;
         public StatModifyType ModifyType;
         public float Value;
@@ -18,8 +17,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         {
             builder.AddComponent(new TimelineEssenceStatData
             {
-                RouteTo = RouteTo,
-                RouteLinkKey = RouteLinkKey,
+                Route = Route,
                 Stat = Stat,
                 ModifyType = ModifyType,
                 Value = Value

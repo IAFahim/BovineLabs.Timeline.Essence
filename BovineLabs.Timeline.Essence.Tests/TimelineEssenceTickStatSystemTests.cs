@@ -4,6 +4,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
 using NUnit.Framework;
 using Unity.Collections;
@@ -48,7 +49,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             this.Manager.SetComponentData(clip, new TrackBinding { Value = target });
             this.Manager.SetComponentData(clip, new TimelineEssenceTickData
             {
-                RouteTo = Target.Self, Mode = EssenceTickMode.Event, Event = EventKey,
+                Route = new EntityLinkRef { ReadRootFrom = Target.Self }, Mode = EssenceTickMode.Event, Event = EventKey,
                 ValuePerTick = 1, TickCount = 10, Duration = 0f, Curve = curve, // Duration 0 -> t==1 -> all 10 ticks due now
             });
             this.Manager.SetComponentEnabled<ClipActive>(clip, true);
@@ -95,7 +96,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             this.Manager.SetComponentData(clip, new TrackBinding { Value = target });
             this.Manager.SetComponentData(clip, new TimelineEssenceStatData
             {
-                RouteTo = Target.Self, Stat = 1, ModifyType = StatModifyType.Added, Value = 5f,
+                Route = new EntityLinkRef { ReadRootFrom = Target.Self }, Stat = 1, ModifyType = StatModifyType.Added, Value = 5f,
             });
             this.Manager.SetComponentEnabled<ClipActive>(clip, true);
             this.Manager.SetComponentEnabled<ClipActivePrevious>(clip, false);

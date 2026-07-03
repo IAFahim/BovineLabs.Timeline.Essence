@@ -1,13 +1,12 @@
 using BovineLabs.Core.EntityCommands;
 using BovineLabs.Essence.Data;
-using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 
 namespace BovineLabs.Timeline.Essence.Data.Builders
 {
     public struct EssenceIntrinsicBuilder
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public IntrinsicKey Intrinsic;
         public int Amount;
 
@@ -16,8 +15,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         {
             builder.AddComponent(new TimelineEssenceIntrinsicData
             {
-                RouteTo = RouteTo,
-                RouteLinkKey = RouteLinkKey,
+                Route = Route,
                 Intrinsic = Intrinsic,
                 Amount = Amount
             });

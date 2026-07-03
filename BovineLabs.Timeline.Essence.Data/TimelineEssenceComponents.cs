@@ -1,22 +1,21 @@
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence.Data
 {
     public struct TimelineEssenceEventData : IComponentData
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public ConditionKey Event;
         public int Value;
     }
 
     public struct TimelineEssenceIntrinsicData : IComponentData
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public IntrinsicKey Intrinsic;
         public int Amount;
     }
@@ -35,8 +34,7 @@ namespace BovineLabs.Timeline.Essence.Data
 
     public struct TimelineEssenceStatData : IComponentData
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public StatKey Stat;
         public StatModifyType ModifyType;
         public float Value;
@@ -55,8 +53,7 @@ namespace BovineLabs.Timeline.Essence.Data
 
     public struct TimelineEssenceTickData : IComponentData
     {
-        public Target RouteTo;
-        public ushort RouteLinkKey;
+        public EntityLinkRef Route;
         public EssenceTickMode Mode;
         public ConditionKey Event;
         public IntrinsicKey Intrinsic;

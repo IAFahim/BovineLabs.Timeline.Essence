@@ -3,6 +3,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Essence.Data;
 using NUnit.Framework;
 using Unity.Entities;
@@ -26,7 +27,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             this.Manager.SetComponentData(clip, new TrackBinding { Value = target });
             this.Manager.SetComponentData(clip, new TimelineEssenceEventData
             {
-                RouteTo = Target.Self, RouteLinkKey = 0, Event = Key, Value = value,
+                Route = new EntityLinkRef { ReadRootFrom = Target.Self, LinkKey = 0 }, Event = Key, Value = value,
             });
             this.Manager.SetComponentEnabled<ClipActive>(clip, true);
             this.Manager.SetComponentEnabled<ClipActivePrevious>(clip, false); // rising edge this frame

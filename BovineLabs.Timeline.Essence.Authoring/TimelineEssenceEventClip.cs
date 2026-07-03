@@ -13,11 +13,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
 {
     public sealed class TimelineEssenceEventClip : DOTSClip, ITimelineClipAsset
     {
-        [Tooltip("Which entity the event fires at: the bound entity (Self) or a Targets slot.")]
-        public Target routeTo = Target.Self;
-
         [Tooltip("Optional link key; re-routes from the resolved target to its linked entity.")]
         public EntityLinkSchema routeLink;
+
+        [Tooltip("Which entity the event fires at: the bound entity (Self) or a Targets slot.")]
+        public Target routeTo = Target.Self;
 
         [Tooltip("The condition event to fire on clip enter.")]
         public ConditionEventObject conditionEvent;
@@ -37,12 +37,9 @@ namespace BovineLabs.Timeline.Essence.Authoring
                     this);
                 return;
             }
-            EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
-
             var builder = new EssenceEventBuilder
             {
-                RouteTo = routeTo,
-                RouteLinkKey = linkKey,
+                Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                 Event = conditionEvent ? conditionEvent.Key : ConditionKey.Null,
                 Value = value
             };

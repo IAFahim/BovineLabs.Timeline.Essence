@@ -12,11 +12,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
 {
     public sealed class TimelineEssenceStatClip : DOTSClip, ITimelineClipAsset
     {
-        [Tooltip("Which entity the modifier lands on: the bound entity (Self) or a Targets slot.")]
-        public Target routeTo = Target.Self;
-
         [Tooltip("Optional link key; re-routes from the resolved target to its linked entity.")]
         public EntityLinkSchema routeLink;
+
+        [Tooltip("Which entity the modifier lands on: the bound entity (Self) or a Targets slot.")]
+        public Target routeTo = Target.Self;
 
         [Tooltip("The stat to modify while the clip is active.")]
         public StatSchemaObject stat;
@@ -42,12 +42,9 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
-
             var builder = new EssenceStatBuilder
             {
-                RouteTo = routeTo,
-                RouteLinkKey = linkKey,
+                Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                 Stat = stat.Key,
                 ModifyType = StatAuthoringUtil.GetModifier(modifyType),
                 Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced

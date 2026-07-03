@@ -18,11 +18,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
 {
     public sealed class TimelineEssenceTickClip : DOTSClip, ITimelineClipAsset
     {
-        [Tooltip("Which entity the ticks land on: the bound entity (Self) or a Targets slot.")]
-        public Target routeTo = Target.Self;
-
         [Tooltip("Optional link key; re-routes from the resolved target to its linked entity.")]
         public EntityLinkSchema routeLink;
+
+        [Tooltip("Which entity the ticks land on: the bound entity (Self) or a Targets slot.")]
+        public Target routeTo = Target.Self;
 
         [Tooltip("What each tick does: fire a ConditionEvent, or change an Intrinsic counter.")]
         public EssenceTickMode mode = EssenceTickMode.Event;
@@ -59,16 +59,13 @@ namespace BovineLabs.Timeline.Essence.Authoring
             else if (tickCount <= 0)
                 Debug.LogError($"TimelineEssenceTickClip '{name}': tickCount is {tickCount} — the clip will fire no ticks.");
 
-            EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
-
             var curve = BuildCurve();
             if (curve.IsCreated)
                 context.Baker.AddBlobAsset(ref curve, out _);
 
             var builder = new EssenceTickBuilder
             {
-                RouteTo = routeTo,
-                RouteLinkKey = linkKey,
+                Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                 Mode = mode,
                 Event = mode == EssenceTickMode.Event && conditionEvent ? conditionEvent.Key : ConditionKey.Null,
                 Intrinsic = mode == EssenceTickMode.Intrinsic && intrinsic ? intrinsic.Key : default(IntrinsicKey),

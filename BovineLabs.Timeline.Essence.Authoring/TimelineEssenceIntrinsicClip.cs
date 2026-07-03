@@ -13,11 +13,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
 {
     public sealed class TimelineEssenceIntrinsicClip : DOTSClip, ITimelineClipAsset
     {
-        [Tooltip("Which entity the counter change lands on: the bound entity (Self) or a Targets slot.")]
-        public Target routeTo = Target.Self;
-
         [Tooltip("Optional link key; re-routes from the resolved target to its linked entity.")]
         public EntityLinkSchema routeLink;
+
+        [Tooltip("Which entity the counter change lands on: the bound entity (Self) or a Targets slot.")]
+        public Target routeTo = Target.Self;
 
         [Tooltip("The intrinsic counter to change on clip enter.")]
         public IntrinsicSchemaObject intrinsic;
@@ -37,12 +37,9 @@ namespace BovineLabs.Timeline.Essence.Authoring
                     this);
                 return;
             }
-            EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey);
-
             var builder = new EssenceIntrinsicBuilder
             {
-                RouteTo = routeTo,
-                RouteLinkKey = linkKey,
+                Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                 Intrinsic = intrinsic ? intrinsic.Key : default(IntrinsicKey),
                 Amount = amount
             };

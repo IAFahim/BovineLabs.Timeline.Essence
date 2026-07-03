@@ -151,7 +151,7 @@ namespace BovineLabs.Timeline.Essence
                 var resolved = false;
                 var target = Entity.Null;
                 if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null
-                    && TimelineEssenceResolver.TryResolveLinkedTarget(data.RouteTo, data.RouteLinkKey, binding.Value,
+                    && TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
                         TargetsLookup, LinkSources, Links, out target)
                     && Intrinsics.HasBuffer(target))
                 {
