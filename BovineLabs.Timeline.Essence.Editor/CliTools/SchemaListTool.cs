@@ -104,7 +104,7 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 conditionType = e.ConditionType,
                 isGlobal = e.IsGlobal,
                 isEvent = e.IsEvent,
-                customDataType = e.CustomDataType != null ? e.CustomDataType.FullName : null,
+                customDataType = e.CustomDataType != null ? e.CustomDataType.ResolveType()?.FullName : null,
                 registered = registered.Contains(e)
             }).ToList();
         }

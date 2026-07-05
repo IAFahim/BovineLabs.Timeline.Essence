@@ -71,11 +71,11 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             var filter = p.Get("filter");
             var eventsOnly = p.GetBool("events_only", false);
 
-            var events = ReadMap(em.GetBuffer<ConditionEvent>(target, true).AsMap(), conditionNames, "ConditionKey", filter);
+            var events = ReadMap(em.GetBuffer<ConditionEvent>(target, true).AsMap(), conditionNames, "ConditionKey", filter, v => v.Read<int>());
             object intrinsics = null, stats = null;
             if (!eventsOnly)
             {
-                intrinsics = ReadMap(em.GetBuffer<Intrinsic>(target, true).AsMap(), intrinsicNames, "IntrinsicKey", filter);
+                intrinsics = ReadMap(em.GetBuffer<Intrinsic>(target, true).AsMap(), intrinsicNames, "IntrinsicKey", filter, v => v);
                 stats = ReadStats(em, target, statNames, filter);
             }
 
@@ -85,9 +85,10 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 new { world = world.Name, entity = target.Index, events, intrinsics, stats });
         }
 
-        private static object[] ReadMap<TKey>(DynamicHashMap<TKey, int> map, Dictionary<int, string> names,
-            string keyLabel, string filter)
+        private static object[] ReadMap<TKey, TValue>(DynamicHashMap<TKey, TValue> map, Dictionary<int, string> names,
+            string keyLabel, string filter, System.Func<TValue, object> valueSelector)
             where TKey : unmanaged, System.IEquatable<TKey>
+            where TValue : unmanaged
         {
             var list = new List<object>();
             using var kv = map.GetKeyValueArrays(Allocator.Temp);
@@ -97,7 +98,7 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 var name = names.TryGetValue(raw, out var n) ? n : $"{keyLabel}#{raw}";
                 if (!string.IsNullOrEmpty(filter) && name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
-                list.Add(new { name, key = raw, value = kv.Values[i] });
+                list.Add(new { name, key = raw, value = valueSelector(kv.Values[i]) });
             }
             return list.OrderBy(o => (string)o.GetType().GetProperty("name").GetValue(o)).ToArray();
         }

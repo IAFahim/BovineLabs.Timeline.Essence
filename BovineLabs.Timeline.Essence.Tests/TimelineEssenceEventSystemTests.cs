@@ -52,7 +52,14 @@ namespace BovineLabs.Timeline.Essence.Tests
 
         private bool Delivered(Entity target, out int value)
         {
-            return this.Manager.GetBuffer<ConditionEvent>(target).AsMap().TryGetValue(Key, out value);
+            if (this.Manager.GetBuffer<ConditionEvent>(target).AsMap().TryGetValue(Key, out var payload))
+            {
+                value = payload.Read<int>();
+                return true;
+            }
+
+            value = 0;
+            return false;
         }
 
         [Test]

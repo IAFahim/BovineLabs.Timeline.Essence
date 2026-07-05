@@ -32,6 +32,7 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private ConditionEventWriter.Lookup _writers;
+        private ConditionEventWriter.SingletonData _writersSingletonData;
 
         // Writer-existence pre-check: a ConditionEventWriter needs both the ConditionEvent buffer and the
         // EventsDirty enableable. Checking them up-front folds the ApplyJob "no writer" silent-drop into the retry.
@@ -55,6 +56,7 @@ namespace BovineLabs.Timeline.Essence
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _conditionEvents = state.GetBufferLookup<ConditionEvent>(true);
             _eventsDirty = state.GetComponentLookup<EventsDirty>(true);
+            _writersSingletonData.Create(ref state);
             _writers.Create(ref state);
         }
 
@@ -74,7 +76,7 @@ namespace BovineLabs.Timeline.Essence
             _linkLookup.Update(ref state);
             _conditionEvents.Update(ref state);
             _eventsDirty.Update(ref state);
-            _writers.Update(ref state);
+            _writers.Update(ref state, _writersSingletonData);
             _uniqueKeySet.Clear();
 
             var activeClipCount = _activeClipQuery.CalculateEntityCount();

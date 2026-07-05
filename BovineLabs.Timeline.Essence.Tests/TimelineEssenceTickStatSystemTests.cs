@@ -72,7 +72,8 @@ namespace BovineLabs.Timeline.Essence.Tests
             sys.Update(this.WorldUnmanaged);
             this.Manager.CompleteAllTrackedJobs();
             Assert.AreEqual(10, this.Manager.GetComponentData<TimelineEssenceTickState>(clip).Fired);
-            Assert.IsTrue(this.Manager.GetBuffer<ConditionEvent>(target).AsMap().TryGetValue(EventKey, out int v));
+            Assert.IsTrue(this.Manager.GetBuffer<ConditionEvent>(target).AsMap().TryGetValue(EventKey, out var payload));
+            var v = payload.Read<int>();
             Assert.AreEqual(10, v); // ValuePerTick(1) * 10 ticks
 
             curve.Dispose();

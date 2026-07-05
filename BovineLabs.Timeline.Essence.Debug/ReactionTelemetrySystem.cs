@@ -121,7 +121,7 @@ namespace BovineLabs.Reaction.Debug
                     history.Insert(0, new ReactionEventHistoryRecord
                     {
                         Key = (ushort)kvp.Key.Value,
-                        Value = kvp.Value,
+                        Value = kvp.Value.Read<int>(),
                         Timestamp = time
                     });
             }
@@ -342,7 +342,7 @@ namespace BovineLabs.Reaction.Debug
                 var anyNonZero = false;
 
                 for (var i = 0; i < values.Length; i++)
-                    if (values[i].Value != 0)
+                    if (values[i].Byte != 0)
                     {
                         anyNonZero = true;
                         break;
@@ -372,7 +372,7 @@ namespace BovineLabs.Reaction.Debug
 
                 for (var i = 0; i < values.Length; i++)
                 {
-                    var raw = values[i].Value;
+                    var raw = values[i].Byte;
                     if (raw == 0) continue;
 
                     var detail = new FixedString128Bytes();

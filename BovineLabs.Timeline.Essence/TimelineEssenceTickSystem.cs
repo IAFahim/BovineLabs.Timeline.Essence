@@ -25,6 +25,7 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private ConditionEventWriter.Lookup _eventWriters;
+        private ConditionEventWriter.SingletonData _eventWritersSingletonData;
         private IntrinsicWriter.SingletonData _intrinsicWriterSingletonData;
         private IntrinsicWriter.Lookup _intrinsicWriters;
 
@@ -36,6 +37,7 @@ namespace BovineLabs.Timeline.Essence
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _eventWritersSingletonData.Create(ref state);
             _eventWriters.Create(ref state);
             _intrinsicWriterSingletonData.Create(ref state);
             _intrinsicWriters.Create(ref state);
@@ -47,7 +49,7 @@ namespace BovineLabs.Timeline.Essence
             _targetsLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
-            _eventWriters.Update(ref state);
+            _eventWriters.Update(ref state, _eventWritersSingletonData);
             _intrinsicWriters.Update(ref state, _intrinsicWriterSingletonData);
 
             state.Dependency = new EventTickJob
