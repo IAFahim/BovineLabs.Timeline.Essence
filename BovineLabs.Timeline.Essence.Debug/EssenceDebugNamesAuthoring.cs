@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using BovineLabs.Core.Authoring.Settings;
 using BovineLabs.Core.Collections;
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Authoring.Core;
 using Unity.Collections;
@@ -27,9 +28,9 @@ namespace BovineLabs.Essence.Debug
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<EssenceDebugNames.Data>();
 
-            BakeNames(builder, ref root.StatNames, essence.StatSchemas, schema => (ushort)schema.Key);
-            BakeNames(builder, ref root.IntrinsicNames, essence.IntrinsicSchemas, schema => (ushort)schema.Key);
-            BakeNames(builder, ref root.EventNames, reaction.ConditionEvents, schema => (ushort)schema.Key);
+            BakeNames(builder, ref root.StatNames, essence.StatSchemas, schema => schema.Key);
+            BakeNames(builder, ref root.IntrinsicNames, essence.IntrinsicSchemas, schema => schema.Key);
+            BakeNames(builder, ref root.EventNames, reaction.ConditionEvents, schema => schema.Key);
 
             var blob = builder.CreateBlobAssetReference<EssenceDebugNames.Data>(Allocator.Persistent);
             AddBlobAsset(ref blob, out _);
@@ -41,9 +42,9 @@ namespace BovineLabs.Essence.Debug
 
         private void BakeNames<T>(
             BlobBuilder builder,
-            ref BlobHashMap<ushort, FixedString32Bytes> map,
+            ref BlobHashMap<BLId, FixedString32Bytes> map,
             IReadOnlyList<T> schemas,
-            Func<T, ushort> key)
+            Func<T, BLId> key)
             where T : Object
         {
             var hashMap = builder.AllocateHashMap(ref map, schemas.Count);

@@ -4,6 +4,7 @@ using BovineLabs.Core;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Active;
@@ -75,7 +76,7 @@ namespace BovineLabs.Reaction.Debug
     [InternalBufferCapacity(8)]
     public struct ReactionEventHistoryRecord : IBufferElementData, ITimestampedRecord
     {
-        public ushort Key;
+        public BLId Key;
         public int Value;
         public double Timestamp;
 
@@ -120,7 +121,7 @@ namespace BovineLabs.Reaction.Debug
                 foreach (var kvp in events.AsMap())
                     history.Insert(0, new ReactionEventHistoryRecord
                     {
-                        Key = (ushort)kvp.Key.Value,
+                        Key = kvp.Key.Value,
                         Value = kvp.Value.Read<int>(),
                         Timestamp = time
                     });
@@ -462,11 +463,11 @@ namespace BovineLabs.Reaction.Debug
             }
 
             private static FixedString32Bytes ResolveName(
-                ref BlobHashMap<ushort, FixedString32Bytes> names, ushort key)
+                ref BlobHashMap<BLId, FixedString32Bytes> names, BLId key)
             {
                 if (names.TryGetValue(key, out var named)) return named.Ref;
                 var fallback = new FixedString32Bytes();
-                fallback.Append(key);
+                fallback.Append(key.ID);
                 return fallback;
             }
         }

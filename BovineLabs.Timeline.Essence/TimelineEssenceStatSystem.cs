@@ -2,6 +2,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
@@ -140,7 +141,7 @@ namespace BovineLabs.Timeline.Essence
                 // Removal keys on AppliedTarget + clipEntity, never binding.Value — so do NOT gate on the current
                 // binding. If the TrackBinding went null before the deactivation edge, the modifier would otherwise
                 // leak on the (still-living, routed) target and AppliedTarget would never clear.
-                if (data.Stat.Value == 0) return;
+                if (data.Stat.Value.IsNull()) return;
 
                 if (state.AppliedTarget == Entity.Null) return;
 

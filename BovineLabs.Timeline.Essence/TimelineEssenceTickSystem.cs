@@ -5,6 +5,7 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
@@ -87,7 +88,7 @@ namespace BovineLabs.Timeline.Essence
                 if (!TickMath.TryAdvance(data, (double)localTime.Value, !previous.ValueRO, ref tickState, out var delta))
                     return;
 
-                if (data.Event == ConditionKey.Null)
+                if (data.Event.Equals(ConditionKey.Null))
                     return;
 
                 // Zero payload: the ticks were legitimately consumed but there is nothing to fire, and
@@ -123,7 +124,7 @@ namespace BovineLabs.Timeline.Essence
                 if (!TickMath.TryAdvance(data, (double)localTime.Value, !previous.ValueRO, ref tickState, out var delta))
                     return;
 
-                if (data.Intrinsic.Value == 0)
+                if (data.Intrinsic.Value.IsNull())
                     return;
 
                 if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,

@@ -5,6 +5,7 @@
     "BovineLabs.Anchor",
     "BovineLabs.Core",
     "BovineLabs.Core.Extensions",
+    "BovineLabs.Timeline.Core",
     "BovineLabs.Timeline.Core.Debug",
     "BovineLabs.Timeline.Essence",
     "BovineLabs.Timeline.Essence.Data",

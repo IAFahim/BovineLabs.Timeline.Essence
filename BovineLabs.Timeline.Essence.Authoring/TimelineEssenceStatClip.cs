@@ -45,7 +45,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceStatBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Stat = stat.Key,
+                Stat = stat.Key.ID,
                 ModifyType = StatAuthoringUtil.GetModifier(modifyType),
                 Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced
                     or StatAuthoringType.Less

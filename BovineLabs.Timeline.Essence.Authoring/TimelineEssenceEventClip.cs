@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceEventBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Event = conditionEvent ? conditionEvent.Key : ConditionKey.Null,
+                Event = conditionEvent ? new ConditionKey(conditionEvent.Key) : ConditionKey.Null,
                 Value = value
             };
             var commands = new BakerCommands(context.Baker, clipEntity);

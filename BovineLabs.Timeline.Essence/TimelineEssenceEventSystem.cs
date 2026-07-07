@@ -145,7 +145,7 @@ namespace BovineLabs.Timeline.Essence
             {
                 var isEdge = !clipActivePrevious.ValueRO;
                 // Value==0 is a no-op the ConditionEventWriter rejects (Check.Assume), so treat it as a dead config (Drop), not a transient miss.
-                var hasPayload = data.Event != ConditionKey.Null && data.Value != 0;
+                var hasPayload = !data.Event.Equals(ConditionKey.Null) && data.Value != 0;
 
                 // Resolve the target only when something is (or just became) owed — and treat a missing
                 // ConditionEventWriter (no ConditionEvent buffer / EventsDirty) as not-yet-resolved so it retries

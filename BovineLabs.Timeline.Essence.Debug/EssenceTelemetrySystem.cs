@@ -3,8 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Essence.Data;
 using BovineLabs.Quill;
+using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -277,11 +279,11 @@ namespace BovineLabs.Essence.Debug
 
                 foreach (var stat in stats.AsMap())
                 {
-                    var name = ResolveName(ref names, stat.Key.Value);
+                    var name = ResolveName(ref names, new BLId(stat.Key.Value));
                     if (IsFiltered(name, StatFilter)) continue;
 
                     var fill = ShowBars
-                        ? ComputeStatFill(stat.Key.Value, stat.Value.Value,
+                        ? ComputeStatFill(new BLId(stat.Key.Value), stat.Value.Value,
                             defaultsArr, entityIndex, hasDefaults, UseLogFill)
                         : 0f;
 
@@ -290,7 +292,7 @@ namespace BovineLabs.Essence.Debug
                     label.Append(':');
                     label.Append(' ');
                     label.Append(stat.Value.Value);
-                    AppendTrendDelta(ref label, stat.Key.Value, trends);
+                    AppendTrendDelta(ref label, new BLId(stat.Key.Value), trends);
 
                     if (ShowBars)
                         Glyph.BarRow(Renderer, v, 0f, y, label, fill, StatAccent, fontSize);
@@ -299,22 +301,22 @@ namespace BovineLabs.Essence.Debug
                     y = Glyph.AdvanceLine(y);
 
                     if (hasDefaults)
-                        y = EmitStatDefaults(v, y, stat.Key.Value, defaultsArr[entityIndex], fontSize);
+                        y = EmitStatDefaults(v, y, new BLId(stat.Key.Value), defaultsArr[entityIndex], fontSize);
 
                     if (hasModifiers)
-                        y = EmitStatModifiers(v, y, stat.Key.Value, modifiersAcc[entityIndex], fontSize);
+                        y = EmitStatModifiers(v, y, new BLId(stat.Key.Value), modifiersAcc[entityIndex], fontSize);
 
                     y = Glyph.AdvanceGroup(y);
                 }
             }
 
-            private float EmitStatDefaults(in View v, float y, ushort statKey,
+            private float EmitStatDefaults(in View v, float y, BLId statKey,
                 StatDefaults defaults, float fontSize)
             {
                 ref var baseArray = ref defaults.Value.Value.Default;
                 for (var i = 0; i < baseArray.Length; i++)
                 {
-                    if (baseArray[i].Type.Value != statKey) continue;
+                    if (new BLId(baseArray[i].Type.Value) != statKey) continue;
 
                     var detail = new FixedString128Bytes();
                     detail.Append('B');
@@ -331,12 +333,12 @@ namespace BovineLabs.Essence.Debug
                 return y;
             }
 
-            private float EmitStatModifiers(in View v, float y, ushort statKey,
+            private float EmitStatModifiers(in View v, float y, BLId statKey,
                 DynamicBuffer<StatModifiers> mods, float fontSize)
             {
                 for (var i = 0; i < mods.Length; i++)
                 {
-                    if (mods[i].Value.Type.Value != statKey) continue;
+                    if (new BLId(mods[i].Value.Type.Value) != statKey) continue;
 
                     var detail = new FixedString128Bytes();
                     detail.Append('M');
@@ -384,7 +386,7 @@ namespace BovineLabs.Essence.Debug
 
                 foreach (var intrinsic in intrinsics.AsMap())
                 {
-                    var name = ResolveName(ref names, intrinsic.Key.Value);
+                    var name = ResolveName(ref names, new BLId(intrinsic.Key.Value));
                     if (IsFiltered(name, IntrinsicFilter)) continue;
 
                     var resolved = ResolveIntrinsicRange(intrinsic.Key, stats, ref configs);
@@ -469,11 +471,11 @@ namespace BovineLabs.Essence.Debug
 
                 foreach (var stat in stats.AsMap())
                 {
-                    var name = ResolveName(ref names, stat.Key.Value);
+                    var name = ResolveName(ref names, new BLId(stat.Key.Value));
                     if (name.IndexOf(HealthStat) == -1)
                         continue;
 
-                    var fill = ComputeStatFill(stat.Key.Value, stat.Value.Value, defaultsArr, entityIndex,
+                    var fill = ComputeStatFill(new BLId(stat.Key.Value), stat.Value.Value, defaultsArr, entityIndex,
                         hasDefaults, false);
                     var view = View.WorldFacing(Camera, head, Scale).NudgeWorld(new float3(0f, BeaconHeight, 0f));
                     VisualGlyph.BeaconPulse(Renderer, view, 0f, 0f, BeaconRadius, Time,
@@ -482,7 +484,7 @@ namespace BovineLabs.Essence.Debug
                 }
             }
 
-            private static float ComputeStatFill(ushort key, float value,
+            private static float ComputeStatFill(BLId key, float value,
                 NativeArray<StatDefaults> defaultsArr, int entityIndex, bool hasDefaults, bool useLog)
             {
                 var max = 100f;
@@ -491,7 +493,7 @@ namespace BovineLabs.Essence.Debug
                 {
                     ref var arr = ref defaultsArr[entityIndex].Value.Value.Default;
                     for (var i = 0; i < arr.Length; i++)
-                        if (arr[i].Type.Value == key && arr[i].ModifyType == StatModifyType.Added)
+                        if (new BLId(arr[i].Type.Value) == key && arr[i].ModifyType == StatModifyType.Added)
                         {
                             max = math.max(1f, arr[i].Value);
                             break;
@@ -525,13 +527,13 @@ namespace BovineLabs.Essence.Debug
                 if (stats.IsCreated)
                 {
                     var statMap = stats.AsMap();
-                    if (data.Ref.MinStatKey.Value != 0 && statMap.TryGetValue(data.Ref.MinStatKey, out var minStat))
+                    if (!data.Ref.MinStatKey.Value.IsNull() && statMap.TryGetValue(data.Ref.MinStatKey, out var minStat))
                     {
                         min = (int)math.floor(minStat.Value);
                         hasStatBounds = true;
                     }
 
-                    if (data.Ref.MaxStatKey.Value != 0 && statMap.TryGetValue(data.Ref.MaxStatKey, out var maxStat))
+                    if (!data.Ref.MaxStatKey.Value.IsNull() && statMap.TryGetValue(data.Ref.MaxStatKey, out var maxStat))
                     {
                         max = (int)math.floor(maxStat.Value);
                         hasStatBounds = true;
@@ -547,7 +549,7 @@ namespace BovineLabs.Essence.Debug
                 };
             }
 
-            private static void AppendTrendDelta(ref FixedString128Bytes label, ushort key,
+            private static void AppendTrendDelta(ref FixedString128Bytes label, BLId key,
                 DynamicBuffer<StatTrendSample> trends)
             {
                 if (!trends.IsCreated || trends.Length < 2) return;
@@ -602,11 +604,11 @@ namespace BovineLabs.Essence.Debug
             }
 
             private static FixedString32Bytes ResolveName(
-                ref BlobHashMap<ushort, FixedString32Bytes> names, ushort key)
+                ref BlobHashMap<BLId, FixedString32Bytes> names, BLId key)
             {
                 if (names.TryGetValue(key, out var named)) return named.Ref;
                 var fallback = new FixedString32Bytes();
-                fallback.Append(key);
+                fallback.Append(key.ID);
                 return fallback;
             }
 

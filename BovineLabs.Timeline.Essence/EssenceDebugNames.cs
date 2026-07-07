@@ -1,4 +1,5 @@
 using BovineLabs.Core.Collections;
+using BovineLabs.Core.ObjectManagement;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -14,9 +15,9 @@ namespace BovineLabs.Essence.Debug
 
         public struct Data
         {
-            public BlobHashMap<ushort, FixedString32Bytes> StatNames;
-            public BlobHashMap<ushort, FixedString32Bytes> IntrinsicNames;
-            public BlobHashMap<ushort, FixedString32Bytes> EventNames;
+            public BlobHashMap<BLId, FixedString32Bytes> StatNames;
+            public BlobHashMap<BLId, FixedString32Bytes> IntrinsicNames;
+            public BlobHashMap<BLId, FixedString32Bytes> EventNames;
         }
     }
 }

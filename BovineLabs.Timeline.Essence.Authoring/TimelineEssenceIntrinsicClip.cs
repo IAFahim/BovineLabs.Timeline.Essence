@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceIntrinsicBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Intrinsic = intrinsic ? intrinsic.Key : default(IntrinsicKey),
+                Intrinsic = intrinsic ? (IntrinsicKey)intrinsic.Key.ID : default(IntrinsicKey),
                 Amount = amount
             };
             var commands = new BakerCommands(context.Baker, clipEntity);

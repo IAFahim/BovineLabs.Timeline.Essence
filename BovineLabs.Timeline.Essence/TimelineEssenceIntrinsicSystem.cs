@@ -6,6 +6,7 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Essence;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
@@ -144,7 +145,7 @@ namespace BovineLabs.Timeline.Essence
                 EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
                 var isEdge = !clipActivePrevious.ValueRO;
-                var hasPayload = data.Intrinsic.Value != 0;
+                var hasPayload = !data.Intrinsic.Value.IsNull();
 
                 // Resolve the target only when something is (or just became) owed — and treat a missing Intrinsic
                 // buffer as not-yet-resolved so it retries instead of being dropped in ApplyJob.
