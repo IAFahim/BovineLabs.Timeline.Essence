@@ -91,35 +91,55 @@ namespace BovineLabs.Reaction.Debug
     {
         private const double RetentionWindow = 2.0;
 
+        private EntityQuery needsHistoryQuery;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            // Entities carrying live ConditionEvents but not yet a history buffer — used to skip the AddBuffer ECB
+            // entirely when there is nothing new to tag (the common steady state).
+            needsHistoryQuery = SystemAPI.QueryBuilder()
+                .WithAll<ConditionEvent>()
+                .WithNone<ReactionEventHistoryRecord>()
+                .Build();
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!ReactionTelemetryConfig.Enabled.Data &&
-                !SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
+            // Record if-and-only-if the Reaction telemetry panel would actually render this frame (force flag OR the
+            // drawer is toggled on) — not merely because some unrelated drawer singleton exists.
+            if (!TelemetryGate.IsActive<ReactionTelemetrySystem>(ref state, ReactionTelemetryConfig.Enabled.Data))
+                return;
 
             var time = SystemAPI.Time.ElapsedTime;
-            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
-            foreach (var (events, entity) in
-                     SystemAPI.Query<DynamicBuffer<ConditionEvent>>()
-                         .WithNone<ReactionEventHistoryRecord>()
-                         .WithEntityAccess())
-                if (events.Length > 0)
-                    ecb.AddBuffer<ReactionEventHistoryRecord>(entity);
+            if (!needsHistoryQuery.IsEmpty)
+            {
+                var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
+                foreach (var (events, entity) in
+                         SystemAPI.Query<DynamicBuffer<ConditionEvent>>()
+                             .WithNone<ReactionEventHistoryRecord>()
+                             .WithEntityAccess())
+                    if (events.Length > 0)
+                        ecb.AddBuffer<ReactionEventHistoryRecord>(entity);
+
+                ecb.Playback(state.EntityManager);
+                ecb.Dispose();
+            }
 
             foreach (var (events, history) in
                      SystemAPI.Query<DynamicBuffer<ConditionEvent>, DynamicBuffer<ReactionEventHistoryRecord>>())
             {
-                while (history.Length > 0 && time - history[history.Length - 1].Timestamp > RetentionWindow)
-                    history.RemoveAt(history.Length - 1);
+                // Oldest entries live at the FRONT now (records are appended at the tail), so cull expired ones from 0.
+                while (history.Length > 0 && time - history[0].Timestamp > RetentionWindow)
+                    history.RemoveAt(0);
 
                 if (events.Length == 0) continue;
 
                 foreach (var kvp in events.AsMap())
-                    history.Insert(0, new ReactionEventHistoryRecord
+                    history.Add(new ReactionEventHistoryRecord
                     {
                         Key = kvp.Key.Value,
                         Value = kvp.Value.Read<int>(),
@@ -246,31 +266,11 @@ namespace BovineLabs.Reaction.Debug
 
                 var label = new FixedString128Bytes();
                 if (isActive)
-                {
-                    label.Append('A');
-                    label.Append('C');
-                    label.Append('T');
-                    label.Append('I');
-                    label.Append('V');
-                    label.Append('E');
-                }
+                    label.Append((FixedString32Bytes)"ACTIVE");
                 else
-                {
-                    label.Append('I');
-                    label.Append('D');
-                    label.Append('L');
-                    label.Append('E');
-                }
+                    label.Append((FixedString32Bytes)"IDLE");
 
-                label.Append(' ');
-                label.Append('R');
-                label.Append('E');
-                label.Append('A');
-                label.Append('C');
-                label.Append('T');
-                label.Append('I');
-                label.Append('O');
-                label.Append('N');
+                label.Append((FixedString32Bytes)" REACTION");
 
                 Glyph.BarRow(Renderer, v, 0f, y, label, fill, accent, TelemetryConfig.TitleSize.Data);
                 return Glyph.AdvanceLine(y);
@@ -282,18 +282,7 @@ namespace BovineLabs.Reaction.Debug
                 var bits = math.min(CondBits, 32);
 
                 var headerLabel = new FixedString128Bytes();
-                headerLabel.Append('C');
-                headerLabel.Append('o');
-                headerLabel.Append('n');
-                headerLabel.Append('d');
-                headerLabel.Append('i');
-                headerLabel.Append('t');
-                headerLabel.Append('i');
-                headerLabel.Append('o');
-                headerLabel.Append('n');
-                headerLabel.Append('s');
-                headerLabel.Append(' ');
-                headerLabel.Append('(');
+                headerLabel.Append((FixedString32Bytes)"Conditions (");
                 headerLabel.Append(mask);
                 headerLabel.Append(')');
                 Glyph.TitleRow(Renderer, v, y, headerLabel, ConditionAccent);
@@ -305,29 +294,12 @@ namespace BovineLabs.Reaction.Debug
                     var fill = isSet ? 1f : 0f;
 
                     var bitLabel = new FixedString128Bytes();
-                    bitLabel.Append('B');
-                    bitLabel.Append('i');
-                    bitLabel.Append('t');
-                    bitLabel.Append(' ');
+                    bitLabel.Append((FixedString32Bytes)"Bit ");
                     bitLabel.Append(i);
                     if (isSet)
-                    {
-                        bitLabel.Append(':');
-                        bitLabel.Append(' ');
-                        bitLabel.Append('S');
-                        bitLabel.Append('E');
-                        bitLabel.Append('T');
-                    }
+                        bitLabel.Append((FixedString32Bytes)": SET");
                     else
-                    {
-                        bitLabel.Append(':');
-                        bitLabel.Append(' ');
-                        bitLabel.Append('c');
-                        bitLabel.Append('l');
-                        bitLabel.Append('e');
-                        bitLabel.Append('a');
-                        bitLabel.Append('r');
-                    }
+                        bitLabel.Append((FixedString32Bytes)": clear");
 
                     Glyph.BarRow(Renderer, v, 0f, y, bitLabel, fill, ConditionAccent, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -352,22 +324,7 @@ namespace BovineLabs.Reaction.Debug
                 if (!anyNonZero) return y;
 
                 var header = new FixedString128Bytes();
-                header.Append('C');
-                header.Append('o');
-                header.Append('n');
-                header.Append('d');
-                header.Append('i');
-                header.Append('t');
-                header.Append('i');
-                header.Append('o');
-                header.Append('n');
-                header.Append(' ');
-                header.Append('V');
-                header.Append('a');
-                header.Append('l');
-                header.Append('u');
-                header.Append('e');
-                header.Append('s');
+                header.Append((FixedString32Bytes)"Condition Values");
                 Glyph.TitleRow(Renderer, v, y, header, ConditionAccent);
                 y = Glyph.AdvanceLine(y);
 
@@ -377,15 +334,9 @@ namespace BovineLabs.Reaction.Debug
                     if (raw == 0) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('C');
-                    detail.Append('o');
-                    detail.Append('n');
-                    detail.Append('d');
-                    detail.Append('[');
+                    detail.Append((FixedString32Bytes)"Cond[");
                     detail.Append(i);
-                    detail.Append(']');
-                    detail.Append(':');
-                    detail.Append(' ');
+                    detail.Append((FixedString32Bytes)"]: ");
                     detail.Append(raw);
 
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
@@ -404,23 +355,12 @@ namespace BovineLabs.Reaction.Debug
                 ref var names = ref DebugNames.Value.Value.EventNames;
 
                 var header = new FixedString128Bytes();
-                header.Append('E');
-                header.Append('v');
-                header.Append('e');
-                header.Append('n');
-                header.Append('t');
-                header.Append(' ');
-                header.Append('H');
-                header.Append('i');
-                header.Append('s');
-                header.Append('t');
-                header.Append('o');
-                header.Append('r');
-                header.Append('y');
+                header.Append((FixedString32Bytes)"Event History");
                 Glyph.TitleRow(Renderer, v, y, header, EventAccent);
                 y = Glyph.AdvanceLine(y);
 
-                for (var i = 0; i < history.Length; i++)
+                // Records are appended at the tail (newest last); walk backwards so the display is newest-first.
+                for (var i = history.Length - 1; i >= 0; i--)
                 {
                     var record = history[i];
                     var age = (float)(Time - record.Timestamp);
@@ -431,11 +371,9 @@ namespace BovineLabs.Reaction.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(eventName);
-                    label.Append(':');
-                    label.Append(' ');
+                    label.Append((FixedString32Bytes)": ");
                     label.Append(record.Value);
-                    label.Append(' ');
-                    label.Append('(');
+                    label.Append((FixedString32Bytes)" (");
                     AppendAge(ref label, age);
                     label.Append(')');
 
@@ -452,8 +390,7 @@ namespace BovineLabs.Reaction.Debug
                 if (ms < 1000)
                 {
                     str.Append(ms);
-                    str.Append('m');
-                    str.Append('s');
+                    str.Append((FixedString32Bytes)"ms");
                 }
                 else
                 {

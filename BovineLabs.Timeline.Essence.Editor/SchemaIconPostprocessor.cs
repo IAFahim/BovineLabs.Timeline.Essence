@@ -22,14 +22,28 @@ namespace BovineLabs.Timeline.Essence.Editor
         private static Dictionary<Type, Texture2D> iconCache;
         private static HashSet<string> schemaFolders;
 
+        // A mis-configured project (missing package icons / unresolvable root) would otherwise spam an error on EVERY
+        // domain reload. Collapse the run of related errors into a single message per domain load. Reset in the static
+        // ctor (runs once per reload).
+        private static bool errorLogged;
+
         static SchemaIconPostprocessor()
         {
             iconCache = null;
             schemaFolders = null;
             packageRoot = null;
+            errorLogged = false;
 
             EditorApplication.delayCall -= FixExisting;
             EditorApplication.delayCall += FixExisting;
+        }
+
+        private static void LogErrorOnce(string message)
+        {
+            if (errorLogged) return;
+
+            errorLogged = true;
+            Debug.LogError(message);
         }
 
         private static string PackageRoot
@@ -50,7 +64,7 @@ namespace BovineLabs.Timeline.Essence.Editor
                     }
                 }
 
-                Debug.LogError("[SchemaIconPostprocessor] Could not resolve package root.");
+                LogErrorOnce("[SchemaIconPostprocessor] Could not resolve package root.");
                 packageRoot = "";
                 return packageRoot;
             }
@@ -65,7 +79,7 @@ namespace BovineLabs.Timeline.Essence.Editor
                 iconCache = new Dictionary<Type, Texture2D>();
                 if (string.IsNullOrEmpty(PackageRoot))
                 {
-                    Debug.LogError("[SchemaIconPostprocessor] Could not resolve package root.");
+                    LogErrorOnce("[SchemaIconPostprocessor] Could not resolve package root.");
                     return iconCache;
                 }
 
@@ -140,7 +154,7 @@ namespace BovineLabs.Timeline.Essence.Editor
         {
             if (IconCache.Count == 0)
             {
-                Debug.LogError("[SchemaIconPostprocessor] No icons loaded. Aborting.");
+                LogErrorOnce("[SchemaIconPostprocessor] No icons loaded. Aborting.");
                 return;
             }
 

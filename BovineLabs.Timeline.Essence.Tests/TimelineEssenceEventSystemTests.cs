@@ -14,7 +14,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // Integration test for the real TimelineEssenceEventSystem (not just the pure EssenceDeliveryGate): it drives the
     // ECS query + enableable wiring that pure-logic tests can't see — which is exactly where the missing-[WithPresent]
     // bug hid. Frame transitions mimic the core ClipActivePreviousSystem (copies ClipActive -> ClipActivePrevious each frame).
-    public class TimelineEssenceEventSystemTests : ECSTestsFixture
+    public class TimelineEssenceEventSystemTests : TimelineEssenceTestFixture
     {
         private static readonly ConditionKey Key = new() { Value = new BLId(100) };
 
@@ -34,13 +34,6 @@ namespace BovineLabs.Timeline.Essence.Tests
             this.Manager.SetComponentEnabled<ClipActivePrevious>(clip, false); // rising edge this frame
             this.Manager.SetComponentEnabled<TimelineEssenceDeliveryPending>(clip, false); // baked-disabled latch
             return (clip, target);
-        }
-
-        private void GiveTargetAWriter(Entity target)
-        {
-            this.Manager.AddBuffer<ConditionEvent>(target).Initialize();
-            this.Manager.AddComponent<EventsDirty>(target);
-            this.Manager.SetComponentEnabled<EventsDirty>(target, true);
         }
 
         private void Tick(SystemHandle sys, Entity clip)

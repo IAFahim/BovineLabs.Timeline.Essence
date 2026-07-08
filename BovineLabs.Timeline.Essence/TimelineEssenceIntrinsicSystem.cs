@@ -50,6 +50,7 @@ namespace BovineLabs.Timeline.Essence
             _uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             state.RequireForUpdate<EssenceConfig>();
+            state.RequireForUpdate<TimelineEssenceIntrinsicData>();
 
             _activeClipQuery = new EntityQueryBuilder(Allocator.Temp)
                 .WithAll<TrackBinding, TimelineEssenceIntrinsicData, ClipActive>()
@@ -151,12 +152,22 @@ namespace BovineLabs.Timeline.Essence
                 // buffer as not-yet-resolved so it retries instead of being dropped in ApplyJob.
                 var resolved = false;
                 var target = Entity.Null;
-                if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null
-                    && TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
-                        TargetsLookup, LinkSources, Links, out target)
-                    && Intrinsics.HasBuffer(target))
+                if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null)
                 {
-                    resolved = true;
+                    var result = TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, data.LinkMiss,
+                        binding.Value, TargetsLookup, LinkSources, Links, out target);
+
+                    if (result == ResolveResult.Dropped)
+                    {
+                        // Link missing under Drop policy: consume the one-shot latch without firing anywhere.
+                        pending.ValueRW = false;
+                        return;
+                    }
+
+                    if (result == ResolveResult.Resolved && Intrinsics.HasBuffer(target))
+                    {
+                        resolved = true;
+                    }
                 }
 
                 var outcome = EssenceDeliveryGate.Evaluate(isEdge, pending.ValueRO, hasPayload, resolved, out var next);
@@ -181,19 +192,20 @@ namespace BovineLabs.Timeline.Essence
             public bool LogEnabled;
             public BLLogger Logger;
 
-            private void Execute(EnabledRefRW<TimelineEssenceDeliveryPending> pending)
+            private void Execute(Entity entity, in TimelineEssenceIntrinsicData data,
+                EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
-                if (!pending.ValueRO)
-                {
-                    return;
-                }
-
                 pending.ValueRW = false;
 
                 if (LogEnabled)
                 {
-                    Logger.LogWarning512(
-                        "[Essence] Intrinsic clip ended without delivering: target/binding/buffer never resolved during the clip. Check routeTo and that the target carries an Intrinsic buffer (StatAuthoring).");
+                    var msg = new FixedString512Bytes();
+                    msg.Append((FixedString128Bytes)"[Essence] Intrinsic clip ");
+                    msg.Append(entity.ToFixedString());
+                    msg.Append((FixedString128Bytes)" (intrinsic id ");
+                    msg.Append(data.Intrinsic.Value);
+                    msg.Append((FixedString512Bytes)") ended without delivering: target/binding/buffer never resolved. Check routeTo and that the target carries an Intrinsic buffer (StatAuthoring).");
+                    Logger.LogWarning512(msg);
                 }
             }
         }

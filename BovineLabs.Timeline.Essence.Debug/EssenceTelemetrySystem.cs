@@ -268,11 +268,7 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append('S');
-                title.Append('T');
-                title.Append('A');
-                title.Append('T');
-                title.Append('S');
+                title.Append((FixedString32Bytes)"STATS");
                 Glyph.TitleRow(Renderer, v, y, title, StatAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -289,8 +285,7 @@ namespace BovineLabs.Essence.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(':');
-                    label.Append(' ');
+                    label.Append((FixedString32Bytes)": ");
                     label.Append(stat.Value.Value);
                     AppendTrendDelta(ref label, new BLId(stat.Key.Value), trends);
 
@@ -319,12 +314,7 @@ namespace BovineLabs.Essence.Debug
                     if (new BLId(baseArray[i].Type.Value) != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('B');
-                    detail.Append('a');
-                    detail.Append('s');
-                    detail.Append('e');
-                    detail.Append(':');
-                    detail.Append(' ');
+                    detail.Append((FixedString32Bytes)"Base: ");
                     FormatModifier(ref detail, baseArray[i]);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -341,17 +331,9 @@ namespace BovineLabs.Essence.Debug
                     if (new BLId(mods[i].Value.Type.Value) != statKey) continue;
 
                     var detail = new FixedString128Bytes();
-                    detail.Append('M');
-                    detail.Append('o');
-                    detail.Append('d');
-                    detail.Append(':');
-                    detail.Append(' ');
+                    detail.Append((FixedString32Bytes)"Mod: ");
                     FormatModifier(ref detail, mods[i].Value);
-                    detail.Append(' ');
-                    detail.Append('S');
-                    detail.Append('r');
-                    detail.Append('c');
-                    detail.Append(':');
+                    detail.Append((FixedString32Bytes)" Src:");
                     detail.Append(mods[i].SourceEntity.Index);
                     Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                     y = Glyph.AdvanceLine(y);
@@ -370,16 +352,7 @@ namespace BovineLabs.Essence.Debug
                 var y = 0f;
 
                 var title = new FixedString128Bytes();
-                title.Append('I');
-                title.Append('N');
-                title.Append('T');
-                title.Append('R');
-                title.Append('I');
-                title.Append('N');
-                title.Append('S');
-                title.Append('I');
-                title.Append('C');
-                title.Append('S');
+                title.Append((FixedString32Bytes)"INTRINSICS");
                 Glyph.TitleRow(Renderer, v, y, title, IntrinsicAccent);
                 y = Glyph.AdvanceLine(y);
                 y = Glyph.AdvanceGroup(y);
@@ -398,17 +371,14 @@ namespace BovineLabs.Essence.Debug
 
                     var label = new FixedString128Bytes();
                     label.Append(name);
-                    label.Append(':');
-                    label.Append(' ');
+                    label.Append((FixedString32Bytes)": ");
                     label.Append(intrinsic.Value);
 
                     if (resolved.Range > 0)
                     {
-                        label.Append(' ');
-                        label.Append('[');
+                        label.Append((FixedString32Bytes)" [");
                         label.Append(resolved.Min);
-                        label.Append('.');
-                        label.Append('.');
+                        label.Append((FixedString32Bytes)"..");
                         label.Append(resolved.Max);
                         label.Append(']');
                     }
@@ -422,35 +392,11 @@ namespace BovineLabs.Essence.Debug
                     if (resolved.HasStatBounds)
                     {
                         var detail = new FixedString128Bytes();
-                        detail.Append('M');
-                        detail.Append('i');
-                        detail.Append('n');
-                        detail.Append(':');
-                        detail.Append(' ');
+                        detail.Append((FixedString32Bytes)"Min: ");
                         detail.Append(resolved.Min);
-                        detail.Append(' ');
-                        detail.Append('|');
-                        detail.Append(' ');
-                        detail.Append('M');
-                        detail.Append('a');
-                        detail.Append('x');
-                        detail.Append(':');
-                        detail.Append(' ');
+                        detail.Append((FixedString32Bytes)" | Max: ");
                         detail.Append(resolved.Max);
-                        detail.Append(' ');
-                        detail.Append('(');
-                        detail.Append('s');
-                        detail.Append('t');
-                        detail.Append('a');
-                        detail.Append('t');
-                        detail.Append('-');
-                        detail.Append('d');
-                        detail.Append('r');
-                        detail.Append('i');
-                        detail.Append('v');
-                        detail.Append('e');
-                        detail.Append('n');
-                        detail.Append(')');
+                        detail.Append((FixedString32Bytes)" (stat-driven)");
                         Glyph.DetailRow(Renderer, v, y, detail, fontSize);
                         y = Glyph.AdvanceLine(y);
                     }
@@ -568,8 +514,7 @@ namespace BovineLabs.Essence.Debug
                 var delta = last - prev;
                 if (math.abs(delta) <= 0.001f) return;
 
-                label.Append(' ');
-                label.Append('(');
+                label.Append((FixedString32Bytes)" (");
                 if (delta > 0) label.Append('+');
                 label.Append(delta);
                 label.Append(')');
@@ -586,19 +531,12 @@ namespace BovineLabs.Essence.Debug
                     case StatModifyType.Additive:
                         if (mod.ValueFloat >= 0) str.Append('+');
                         str.Append(mod.ValueFloat * 100f);
-                        str.Append('%');
-                        str.Append(' ');
-                        str.Append('A');
-                        str.Append('d');
-                        str.Append('d');
+                        str.Append((FixedString32Bytes)"% Add");
                         break;
                     case StatModifyType.Multiplicative:
                         str.Append('x');
                         str.Append(1f + mod.ValueFloat);
-                        str.Append(' ');
-                        str.Append('M');
-                        str.Append('u');
-                        str.Append('l');
+                        str.Append((FixedString32Bytes)" Mul");
                         break;
                 }
             }

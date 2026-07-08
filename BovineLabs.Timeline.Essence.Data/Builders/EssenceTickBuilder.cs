@@ -16,6 +16,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         public int TickCount;
         public float Duration;
         public BlobAssetReference<DistributionCurveBlob> Curve;
+        public LinkMissBehavior LinkMiss;
 
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
@@ -29,7 +30,8 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
                 ValuePerTick = ValuePerTick,
                 TickCount = TickCount,
                 Duration = Duration,
-                Curve = Curve
+                Curve = Curve,
+                LinkMiss = LinkMiss
             });
             builder.AddComponent(new TimelineEssenceTickState { Fired = 0 });
         }

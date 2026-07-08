@@ -2,6 +2,7 @@ using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.Essence.Data;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence
@@ -14,6 +15,17 @@ namespace BovineLabs.Timeline.Essence
                        WorldSystemFilterFlags.ServerSimulation)]
     public partial struct TimelineEssenceLoopRefireSystem : ISystem
     {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            // Only run when at least one active Event/Intrinsic/Tick clip exists to re-arm (matches RearmJob's query).
+            var query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<ClipActive, ClipActivePrevious>()
+                .WithAny<TimelineEssenceIntrinsicData, TimelineEssenceEventData, TimelineEssenceTickData>()
+                .Build(ref state);
+            state.RequireForUpdate(query);
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {

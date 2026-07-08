@@ -308,7 +308,7 @@ namespace BovineLabs.Timeline.Essence.Editor
             map = default;
             if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Stat>(e)) return false;
 
-            map = em.GetBuffer<Stat>(e).AsMap();
+            map = em.GetBuffer<Stat>(e, true).AsMap();
             return true;
         }
 
@@ -317,7 +317,7 @@ namespace BovineLabs.Timeline.Essence.Editor
             map = default;
             if (!TryGetEntity(go, out var em, out var e) || !em.HasBuffer<Intrinsic>(e)) return false;
 
-            map = em.GetBuffer<Intrinsic>(e).AsMap();
+            map = em.GetBuffer<Intrinsic>(e, true).AsMap();
             return true;
         }
 
@@ -327,9 +327,9 @@ namespace BovineLabs.Timeline.Essence.Editor
             entity = Entity.Null;
             try
             {
-                if (!Application.isPlaying) return false;
-
-                var world = World.DefaultGameObjectInjectionWorld;
+                // Mirror the essence_state tool: prefer the playing Game world, else a converted SubScene world with
+                // Essence data — so live reads also work in edit mode against an open, baked SubScene.
+                var world = EssenceEditorWorlds.PickWorld();
                 if (world is not { IsCreated: true }) return false;
 
                 em = world.EntityManager;

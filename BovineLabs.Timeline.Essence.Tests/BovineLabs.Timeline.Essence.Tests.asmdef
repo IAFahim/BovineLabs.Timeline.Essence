@@ -16,6 +16,7 @@
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
+    "Unity.Entities.Hybrid",
     "Unity.Mathematics",
     "Unity.Transforms",
     "UnityEngine.TestRunner",

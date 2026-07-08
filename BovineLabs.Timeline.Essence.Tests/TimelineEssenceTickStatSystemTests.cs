@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Essence.Tests
 {
     // Integration tests for the two sibling systems that shared the silent-miss root cause but weren't in the
     // original fix scope. Drives the real systems so the late-resolution retry behaviour is locked, not just reasoned.
-    public class TimelineEssenceTickStatSystemTests : ECSTestsFixture
+    public class TimelineEssenceTickStatSystemTests : TimelineEssenceTestFixture
     {
         private static readonly ConditionKey EventKey = new() { Value = new BLId(100) };
 

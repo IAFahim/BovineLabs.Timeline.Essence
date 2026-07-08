@@ -11,6 +11,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         public StatKey Stat;
         public StatModifyType ModifyType;
         public float Value;
+        public LinkMissBehavior LinkMiss;
 
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
@@ -20,7 +21,8 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
                 Route = Route,
                 Stat = Stat,
                 ModifyType = ModifyType,
-                Value = Value
+                Value = Value,
+                LinkMiss = LinkMiss
             });
 
             builder.AddComponent(new TimelineEssenceStatState

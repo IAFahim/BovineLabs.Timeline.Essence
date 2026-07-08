@@ -21,19 +21,27 @@ namespace BovineLabs.Timeline.Essence.Authoring
         [Tooltip("Optional link key; re-routes from the resolved target to its linked entity.")]
         public EntityLinkSchema routeLink;
 
+        [Tooltip("What to do when routeLink is set but the link cannot be resolved: FallbackToTarget fires at the " +
+                 "unlinked target (legacy, can misdirect effects), Retry waits for the link, Drop consumes the clip without firing.")]
+        public LinkMissBehavior linkMissBehavior = LinkMissBehavior.FallbackToTarget;
+
         [Tooltip("Which entity the ticks land on: the bound entity (Self) or a Targets slot.")]
         public Target routeTo = Target.Self;
 
         [Tooltip("What each tick does: fire a ConditionEvent, or change an Intrinsic counter.")]
         public EssenceTickMode mode = EssenceTickMode.Event;
 
-        [Tooltip("Event fired per tick (used when Mode = Event).")]
+        [Tooltip("Event fired per tick (used when Mode = Event). Ticks elapsed in one frame are delivered as ONE " +
+                 "event whose value is the SUM (valuePerTick x ticks). Consume with ConditionFeature.Accumulate or " +
+                 "GreaterThanEqual — an Equal comparison will miss batched ticks at low FPS.")]
         public ConditionEventObject conditionEvent;
 
         [Tooltip("Intrinsic changed per tick (used when Mode = Intrinsic).")]
         public IntrinsicSchemaObject intrinsic;
 
-        [Tooltip("Value applied per tick (event payload, or intrinsic delta).")]
+        [Tooltip("Value applied per tick (event payload, or intrinsic delta). Ticks elapsed in one frame are " +
+                 "delivered as ONE event whose value is the SUM (valuePerTick x ticks). Consume with " +
+                 "ConditionFeature.Accumulate or GreaterThanEqual — an Equal comparison will miss batched ticks at low FPS.")]
         public int valuePerTick = 1;
 
         [Tooltip("Total number of ticks distributed across the window.")]
@@ -58,8 +66,11 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 Debug.LogError($"TimelineEssenceTickClip '{name}': Intrinsic mode with no Intrinsic assigned — the clip will do nothing.", intrinsic);
             else if (tickCount <= 0)
                 Debug.LogError($"TimelineEssenceTickClip '{name}': tickCount is {tickCount} — the clip will fire no ticks.");
+            else if (valuePerTick == 0)
+                Debug.LogError($"TimelineEssenceTickClip '{name}': valuePerTick is 0 — ticks would be consumed with no effect.");
 
-            var curve = BuildCurve();
+            // Skip curve/blob creation for a dead tickCount; TickMath.TryAdvance returns false safely for an uncreated curve.
+            var curve = tickCount > 0 ? BuildCurve() : default;
             if (curve.IsCreated)
                 context.Baker.AddBlobAsset(ref curve, out _);
 
@@ -72,7 +83,8 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 ValuePerTick = valuePerTick,
                 TickCount = math.max(0, tickCount),
                 Duration = math.max(0.0001f, windowSeconds),
-                Curve = curve
+                Curve = curve,
+                LinkMiss = linkMissBehavior
             };
             var commands = new BakerCommands(context.Baker, clipEntity);
             builder.ApplyTo(ref commands);

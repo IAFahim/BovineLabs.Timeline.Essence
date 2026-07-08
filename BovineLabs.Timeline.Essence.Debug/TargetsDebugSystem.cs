@@ -128,28 +128,16 @@ namespace BovineLabs.Essence.Debug
                 var selfPos = GetAntiJitterPosition(entity, ltw.Position);
                 var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
 
-                var fsOwner = new FixedString32Bytes();
-                fsOwner.Append('O');
-                fsOwner.Append('w');
-                fsOwner.Append('r');
+                var fsOwner = (FixedString32Bytes)"Owr";
                 DrawTether(entity, selfPos, targets.Owner, fsOwner, ColorOwner, 0,
                     ref nullCount, tier);
-                var fsSource = new FixedString32Bytes();
-                fsSource.Append('S');
-                fsSource.Append('r');
-                fsSource.Append('c');
+                var fsSource = (FixedString32Bytes)"Src";
                 DrawTether(entity, selfPos, targets.Source, fsSource, ColorSource,
                     1, ref nullCount, tier);
-                var fsTarget = new FixedString32Bytes();
-                fsTarget.Append('T');
-                fsTarget.Append('g');
-                fsTarget.Append('t');
+                var fsTarget = (FixedString32Bytes)"Tgt";
                 DrawTether(entity, selfPos, targets.Target, fsTarget, ColorTarget,
                     2, ref nullCount, tier);
-                var fsCustom = new FixedString32Bytes();
-                fsCustom.Append('C');
-                fsCustom.Append('t');
-                fsCustom.Append('m');
+                var fsCustom = (FixedString32Bytes)"Ctm";
                 DrawTether(entity, selfPos, targets.Custom, fsCustom, ColorCustom,
                     3, ref nullCount, tier);
             }
@@ -166,10 +154,7 @@ namespace BovineLabs.Essence.Debug
                     dimColor.a = 0.4f;
                     var nullPos = selfPos + new float3(0, 0.8f + nullCount * 0.25f, 0);
                     var msg = new FixedString32Bytes();
-                    msg.Append('[');
-                    msg.Append('N');
-                    msg.Append('o');
-                    msg.Append(' ');
+                    msg.Append((FixedString32Bytes)"[No ");
                     msg.Append(label);
                     msg.Append(']');
                     Drawer.Text32(nullPos, msg, dimColor, 10f);
@@ -183,20 +168,7 @@ namespace BovineLabs.Essence.Debug
                     var msg = new FixedString32Bytes();
                     msg.Append('[');
                     msg.Append(label);
-                    msg.Append(' ');
-                    msg.Append('n');
-                    msg.Append('o');
-                    msg.Append(' ');
-                    msg.Append('T');
-                    msg.Append('r');
-                    msg.Append('a');
-                    msg.Append('n');
-                    msg.Append('s');
-                    msg.Append('f');
-                    msg.Append('o');
-                    msg.Append('r');
-                    msg.Append('m');
-                    msg.Append(']');
+                    msg.Append((FixedString32Bytes)" no Transform]");
                     Drawer.Text32(errPos, msg, TimelineDebugColors.Error, 10f);
                     nullCount++;
                     return;

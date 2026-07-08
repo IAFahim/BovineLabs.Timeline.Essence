@@ -38,7 +38,10 @@ namespace BovineLabs.Essence.Debug
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!EssenceTelemetryConfig.Enabled.Data) return;
+            // Sample trends if-and-only-if the Essence telemetry panel (which renders the deltas) would actually draw
+            // this frame — force flag OR the drawer toggled on. Previously this only checked the force ConfigVar, so
+            // trend deltas never appeared when the panel was enabled via the viewer toggle.
+            if (!TelemetryGate.IsActive<EssenceTelemetrySystem>(ref state, EssenceTelemetryConfig.Enabled.Data)) return;
 
             var time = SystemAPI.Time.ElapsedTime;
             if (time < nextSample) return;

@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             if (op != "dump")
                 return new ErrorResponse($"Unknown op '{op}'. Only 'dump' is supported.");
 
-            var world = PickWorld(p.Get("world"));
+            var world = EssenceEditorWorlds.PickWorld(p.Get("world"));
             if (world == null)
                 return new ErrorResponse("No ECS world with Essence entities found. Enter play mode, or open the SubScene.");
 
@@ -71,7 +71,18 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             var filter = p.Get("filter");
             var eventsOnly = p.GetBool("events_only", false);
 
-            var events = ReadMap(em.GetBuffer<ConditionEvent>(target, true).AsMap(), conditionNames, "ConditionKey", filter, v => v.Read<int>());
+            object[] events;
+            string note = null;
+            if (em.HasBuffer<ConditionEvent>(target))
+            {
+                events = ReadMap(em.GetBuffer<ConditionEvent>(target, true).AsMap(), conditionNames, "ConditionKey", filter, v => v.Read<int>());
+            }
+            else
+            {
+                events = System.Array.Empty<object>();
+                note = "entity has no ConditionEvent buffer — add EventWriterAuthoring to receive events";
+            }
+
             object intrinsics = null, stats = null;
             if (!eventsOnly)
             {
@@ -80,9 +91,9 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
             }
 
             return new SuccessResponse(
-                $"Essence of {target} in '{world.Name}' — {(events as System.Array)?.Length ?? 0} live event(s)"
+                $"Essence of {target} in '{world.Name}' — {events.Length} live event(s)"
                 + (UnityEngine.Application.isPlaying ? " [play]" : " [edit — events only fire in play]"),
-                new { world = world.Name, entity = target.Index, events, intrinsics, stats });
+                new { world = world.Name, entity = target.Index, note, events, intrinsics, stats });
         }
 
         private static object[] ReadMap<TKey, TValue>(DynamicHashMap<TKey, TValue> map, Dictionary<int, string> names,
@@ -155,34 +166,11 @@ namespace BovineLabs.Timeline.Essence.Editor.CliTools
                 {
                     if (it.propertyType == SerializedPropertyType.Integer) { found = it.intValue; break; }
                 }
-                if (found > 0 && !map.ContainsKey(found)) map[found] = o.name;
+                // Include key 0 too — it is an invalid/unregistered import, and silently dropping it hid the mistake.
+                if (found >= 0 && !map.ContainsKey(found))
+                    map[found] = found == 0 ? $"{o.name} (INVALID key 0 — re-import asset)" : o.name;
             }
             return map;
-        }
-
-        private static World PickWorld(string filter)
-        {
-            World converted = null, playing = null;
-            foreach (var w in World.All)
-            {
-                if (!w.IsCreated) continue;
-                if (!string.IsNullOrEmpty(filter))
-                {
-                    if (w.Name.IndexOf(filter, System.StringComparison.OrdinalIgnoreCase) >= 0
-                        && w.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Intrinsic>()).CalculateEntityCount() > 0)
-                        return w;
-                    continue;
-                }
-
-                var has = w.EntityManager.CreateEntityQuery(ComponentType.ReadOnly<Intrinsic>()).CalculateEntityCount() > 0;
-                if (!has) continue;
-                if (w.Flags.HasFlag(WorldFlags.Game)) playing = w;
-                else if (w.Name.Contains("Converted Scene") && !w.Name.Contains("Shadow")) converted = w;
-                else converted ??= w;
-            }
-
-            if (UnityEngine.Application.isPlaying && playing != null) return playing;
-            return converted ?? playing;
         }
 
         public class Parameters

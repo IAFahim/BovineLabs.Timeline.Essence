@@ -24,17 +24,45 @@ namespace BovineLabs.Timeline.Essence
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
 
+        // Stat clips lacking the cleanup safety-net component yet. Attached immediately (see OnUpdate) so a clip
+        // destroyed the same frame it applies its modifier still has a removal path.
+        private EntityQuery _attachCleanupQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+
+            _attachCleanupQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TimelineEssenceStatState>()
+                .WithNone<StatModifierCleanup>()
+                .Build(ref state);
+
+            // Idle-gate on stat clips OR leftover cleanup shadows — NOT RequireForUpdate<TimelineEssenceStatData>
+            // alone: when the last stat clip is destroyed, its StatModifierCleanup shadow entity still needs
+            // GatherDestroyedJob to run and remove the modifier from the (surviving) target, or it leaks.
+            var statDataQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TimelineEssenceStatData>()
+                .Build(ref state);
+            var cleanupShadowQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<StatModifierCleanup>()
+                .Build(ref state);
+            state.RequireAnyForUpdate(statDataQuery, cleanupShadowQuery);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            // Attach the cleanup safety-net immediately (main-thread structural add) rather than via a next-frame ECB:
+            // the cleanup must exist the SAME frame the modifier applies, or a clip that applies then is destroyed in
+            // one frame satisfies neither removal path (GatherRemove needs the state component; GatherDestroyed needs
+            // the cleanup) and the StatModifiers entry leaks permanently. Default Target=Entity.Null is fine —
+            // SyncCleanupJob syncs it from AppliedTarget this frame, and GatherDestroyedJob guards Target != Null.
+            if (!_attachCleanupQuery.IsEmpty)
+                state.EntityManager.AddComponent<StatModifierCleanup>(_attachCleanupQuery);
+
             var addStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
             var removeStats = new NativeQueue<StatMutation>(state.WorldUpdateAllocator);
 
@@ -61,7 +89,6 @@ namespace BovineLabs.Timeline.Essence
             state.Dependency = gatherRemoveJob.ScheduleParallel(state.Dependency);
             state.Dependency = gatherAddJob.ScheduleParallel(state.Dependency);
 
-            state.Dependency = new AttachCleanupJob { ECB = ecb }.ScheduleParallel(state.Dependency);
             state.Dependency = new SyncCleanupJob().ScheduleParallel(state.Dependency);
             state.Dependency = new GatherDestroyedJob
             {
@@ -151,18 +178,7 @@ namespace BovineLabs.Timeline.Essence
         }
 
         [BurstCompile]
-        [WithNone(typeof(StatModifierCleanup))]
-        private partial struct AttachCleanupJob : IJobEntity
-        {
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            private void Execute([EntityIndexInQuery] int sortKey, Entity clipEntity, in TimelineEssenceStatState state)
-            {
-                ECB.AddComponent(sortKey, clipEntity, new StatModifierCleanup { Target = state.AppliedTarget });
-            }
-        }
-
-        [BurstCompile]
+        [WithChangeFilter(typeof(TimelineEssenceStatState))]
         private partial struct SyncCleanupJob : IJobEntity
         {
             private void Execute(in TimelineEssenceStatState state, ref StatModifierCleanup cleanup)

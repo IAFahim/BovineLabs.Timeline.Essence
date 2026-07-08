@@ -44,6 +44,12 @@ namespace BovineLabs.Timeline.Essence
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            // Gate scheduling on clip presence and on the Reaction bootstrap singletons the ConditionEventWriter
+            // needs — the writer's generated code fetches these, so requiring them avoids a throw in a bare world.
+            state.RequireForUpdate<TimelineEssenceEventData>();
+            state.RequireForUpdate<ConditionConfig>();
+            state.RequireForUpdate<ConditionEventPayloadAllocator>();
+
             _eventChanges = new NativeParallelMultiHashMapFallback<Entity, EventAmount>(64, Allocator.Persistent);
             _uniqueKeySet = new NativeParallelHashSet<Entity>(64, Allocator.Persistent);
             _uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
@@ -114,7 +120,9 @@ namespace BovineLabs.Timeline.Essence
             {
                 Keys = _uniqueKeys.AsDeferredJobArray(),
                 GroupChanges = reader,
-                Writers = _writers
+                Writers = _writers,
+                LogEnabled = hasLogger,
+                Logger = logger
             }.Schedule(_uniqueKeys, 64, state.Dependency);
 
             state.Dependency = _eventChanges.Clear(state.Dependency);
@@ -152,12 +160,23 @@ namespace BovineLabs.Timeline.Essence
                 // instead of being dropped in ApplyJob.
                 var resolved = false;
                 var target = Entity.Null;
-                if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null
-                    && TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
-                        TargetsLookup, LinkSources, Links, out target)
-                    && ConditionEvents.HasBuffer(target) && EventsDirty.HasComponent(target))
+                if ((isEdge || pending.ValueRO) && hasPayload && binding.Value != Entity.Null)
                 {
-                    resolved = true;
+                    var result = TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, data.LinkMiss,
+                        binding.Value, TargetsLookup, LinkSources, Links, out target);
+
+                    if (result == ResolveResult.Dropped)
+                    {
+                        // Link missing under Drop policy: consume the one-shot latch without firing anywhere.
+                        pending.ValueRW = false;
+                        return;
+                    }
+
+                    if (result == ResolveResult.Resolved
+                        && ConditionEvents.HasBuffer(target) && EventsDirty.HasComponent(target))
+                    {
+                        resolved = true;
+                    }
                 }
 
                 var outcome = EssenceDeliveryGate.Evaluate(isEdge, pending.ValueRO, hasPayload, resolved, out var next);
@@ -182,19 +201,20 @@ namespace BovineLabs.Timeline.Essence
             public bool LogEnabled;
             public BLLogger Logger;
 
-            private void Execute(EnabledRefRW<TimelineEssenceDeliveryPending> pending)
+            private void Execute(Entity entity, in TimelineEssenceEventData data,
+                EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
-                if (!pending.ValueRO)
-                {
-                    return;
-                }
-
                 pending.ValueRW = false;
 
                 if (LogEnabled)
                 {
-                    Logger.LogWarning512(
-                        "[Essence] Event clip ended without delivering: target/binding/writer never resolved during the clip. Check routeTo and that the target carries a ConditionEventWriter (ReactionAuthoring).");
+                    var msg = new FixedString512Bytes();
+                    msg.Append((FixedString128Bytes)"[Essence] Event clip ");
+                    msg.Append(entity.ToFixedString());
+                    msg.Append((FixedString128Bytes)" (event id ");
+                    msg.Append(data.Event.Value.ID);
+                    msg.Append((FixedString512Bytes)") ended without delivering: target/binding/writer never resolved. Check routeTo and that the target carries a ConditionEventWriter (EventWriterAuthoring).");
+                    Logger.LogWarning512(msg);
                 }
             }
         }
@@ -219,6 +239,8 @@ namespace BovineLabs.Timeline.Essence
             [ReadOnly] public NativeArray<Entity> Keys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, EventAmount>.ReadOnly GroupChanges;
             [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup Writers;
+            public bool LogEnabled;
+            public BLLogger Logger;
 
             public void Execute(int index)
             {
@@ -236,7 +258,25 @@ namespace BovineLabs.Timeline.Essence
                 }
 
                 // Skip net-zero accumulations (e.g. a +N and a -N on the same target+key): ConditionEventWriter.Trigger asserts value != 0.
-                foreach (var e in values) if (e.Amount != 0) writer.Trigger(e.Event, e.Amount);
+                foreach (var e in values)
+                {
+                    if (e.Amount != 0)
+                    {
+                        writer.Trigger(e.Event, e.Amount);
+                    }
+                    else if (LogEnabled)
+                    {
+                        // Same-frame clips on this target+key cancelled to a zero sum: the delivery is silently
+                        // consumed (both one-shots already latched Fire). Surface it so it isn't a mystery no-op.
+                        var msg = new FixedString512Bytes();
+                        msg.Append((FixedString128Bytes)"[Essence] Same-frame event writes to ");
+                        msg.Append(key.ToFixedString());
+                        msg.Append((FixedString128Bytes)" (event id ");
+                        msg.Append(e.Event.Value.ID);
+                        msg.Append((FixedString128Bytes)") cancelled to zero — nothing fired.");
+                        Logger.LogWarning512(msg);
+                    }
+                }
             }
 
             private static void AddOrAccumulate(ref FixedList4096Bytes<EventAmount> values, EventAmount value,

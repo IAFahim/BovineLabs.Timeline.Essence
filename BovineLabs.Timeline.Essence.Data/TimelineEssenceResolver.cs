@@ -7,6 +7,19 @@ using Unity.Entities;
 
 namespace BovineLabs.Timeline.Essence.Data
 {
+    /// <summary>Outcome of a link-aware target resolution, distinguishing a clean resolve from the two link-miss policies.</summary>
+    public enum ResolveResult : byte
+    {
+        /// <summary>Target resolved (either directly, or via a successful link hop, or via FallbackToTarget on a miss).</summary>
+        Resolved,
+
+        /// <summary>Not resolvable yet — retry on a later frame (base target unresolved, or link missing under Retry policy).</summary>
+        RetryLater,
+
+        /// <summary>Link missing under Drop policy — the caller must consume its one-shot without firing.</summary>
+        Dropped,
+    }
+
     public static class TimelineEssenceResolver
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -32,9 +45,15 @@ namespace BovineLabs.Timeline.Essence.Data
             return false;
         }
 
+        /// <summary>
+        /// Link-aware target resolution honoring a per-clip <see cref="LinkMissBehavior"/>. When the route has a
+        /// LinkKey that cannot be resolved, the policy decides between firing at the unlinked target
+        /// (FallbackToTarget, legacy), retrying later, or dropping the delivery.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryResolveLinkedTarget(
+        public static ResolveResult TryResolveLinkedTarget(
             in EntityLinkRef route,
+            LinkMissBehavior policy,
             Entity self,
             in UnsafeComponentLookup<Targets> targetsLookup,
             in UnsafeComponentLookup<EntityLinkSource> sources,
@@ -44,22 +63,47 @@ namespace BovineLabs.Timeline.Essence.Data
             resolved = Entity.Null;
 
             if (!TryResolveTarget(route.ReadRootFrom, self, targetsLookup, out var target))
-                return false;
+                return ResolveResult.RetryLater;
 
             if (route.LinkKey == 0)
             {
                 resolved = target;
-                return true;
+                return ResolveResult.Resolved;
             }
 
             if (EntityLinkResolver.TryResolve(target, route.LinkKey, sources, links, out var linked) && linked != Entity.Null)
             {
                 resolved = linked;
-                return true;
+                return ResolveResult.Resolved;
             }
 
-            resolved = target;
-            return true;
+            // LinkKey set but the hop failed: apply the per-clip miss policy.
+            switch (policy)
+            {
+                case LinkMissBehavior.Drop:
+                    resolved = Entity.Null;
+                    return ResolveResult.Dropped;
+                case LinkMissBehavior.Retry:
+                    resolved = Entity.Null;
+                    return ResolveResult.RetryLater;
+                default: // FallbackToTarget (legacy)
+                    resolved = target;
+                    return ResolveResult.Resolved;
+            }
+        }
+
+        /// <summary>Backwards-compatible bool overload: resolves with <see cref="LinkMissBehavior.FallbackToTarget"/>.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryResolveLinkedTarget(
+            in EntityLinkRef route,
+            Entity self,
+            in UnsafeComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<EntityLinkSource> sources,
+            in UnsafeBufferLookup<EntityLinkEntry> links,
+            out Entity resolved)
+        {
+            return TryResolveLinkedTarget(route, LinkMissBehavior.FallbackToTarget, self, targetsLookup, sources, links,
+                out resolved) == ResolveResult.Resolved;
         }
     }
 }

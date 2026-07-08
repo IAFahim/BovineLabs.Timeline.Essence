@@ -1,3 +1,4 @@
+using BovineLabs.Core;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence;
@@ -34,6 +35,11 @@ namespace BovineLabs.Timeline.Essence
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EssenceConfig>();
+            state.RequireForUpdate<TimelineEssenceTickData>();
+            // Tick clips fire ConditionEvents via ConditionEventWriter, whose generated code fetches these; require
+            // them so a bare world (no Reaction bootstrap) never throws inside the writer.
+            state.RequireForUpdate<ConditionConfig>();
+            state.RequireForUpdate<ConditionEventPayloadAllocator>();
 
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
@@ -68,6 +74,15 @@ namespace BovineLabs.Timeline.Essence
                 Links = _linkLookup,
                 IntrinsicWriters = _intrinsicWriters
             }.Schedule(state.Dependency);
+
+            // Warn once, on the falling edge, when a tick clip ended having fired fewer ticks than its CDF target
+            // (target/writer never resolved, or ticks dropped) — parity with the Event/Intrinsic DiagnoseMissedJob.
+            var hasLogger = SystemAPI.TryGetSingleton<BLLogger>(out var logger);
+            state.Dependency = new DiagnoseMissedTickJob
+            {
+                LogEnabled = hasLogger,
+                Logger = logger
+            }.ScheduleParallel(state.Dependency);
         }
 
         [BurstCompile]
@@ -97,12 +112,17 @@ namespace BovineLabs.Timeline.Essence
                 if (value == 0)
                     return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
-                        TargetsLookup, LinkSources, Links, out var entity) &&
-                    EventWriters.TryGet(entity, out var writer))
+                var result = TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, data.LinkMiss, binding.Value,
+                    TargetsLookup, LinkSources, Links, out var entity);
+
+                if (result == ResolveResult.Resolved && EventWriters.TryGet(entity, out var writer))
                     writer.Trigger(data.Event, value);
+                else if (result == ResolveResult.Dropped)
+                {
+                    // Link missing under Drop policy: ticks stay committed (consumed), nothing fires, no retry.
+                }
                 else
-                    tickState.Fired -= delta; // target/writer not resolved yet: un-commit so these ticks retry next frame instead of being silently lost
+                    tickState.Fired -= delta; // RetryLater, or resolved-but-writer-missing: un-commit so these ticks retry next frame
             }
         }
 
@@ -127,12 +147,47 @@ namespace BovineLabs.Timeline.Essence
                 if (data.Intrinsic.Value.IsNull())
                     return;
 
-                if (TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, binding.Value,
-                        TargetsLookup, LinkSources, Links, out var entity) &&
-                    IntrinsicWriters.TryGet(entity, out var writer))
+                var result = TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, data.LinkMiss, binding.Value,
+                    TargetsLookup, LinkSources, Links, out var entity);
+
+                if (result == ResolveResult.Resolved && IntrinsicWriters.TryGet(entity, out var writer))
                     writer.Add(data.Intrinsic, data.ValuePerTick * delta);
+                else if (result == ResolveResult.Dropped)
+                {
+                    // Link missing under Drop policy: ticks stay committed (consumed), nothing fires, no retry.
+                }
                 else
-                    tickState.Fired -= delta; // target/writer not resolved yet: un-commit so these ticks retry next frame instead of being silently lost
+                    tickState.Fired -= delta; // RetryLater, or resolved-but-writer-missing: un-commit so these ticks retry next frame
+            }
+        }
+
+        // Falling edge (ClipActive just disabled, ClipActivePrevious still on): a tick clip that ended having fired
+        // fewer ticks than its CDF end target never fully resolved its target/writer (or dropped ticks). Warn once.
+        [BurstCompile]
+        [WithAll(typeof(ClipActivePrevious))]
+        [WithDisabled(typeof(ClipActive))]
+        private partial struct DiagnoseMissedTickJob : IJobEntity
+        {
+            public bool LogEnabled;
+            public BLLogger Logger;
+
+            private void Execute(Entity entity, in TimelineEssenceTickData data, in TimelineEssenceTickState st)
+            {
+                if (!LogEnabled)
+                    return;
+
+                if (data.TickCount > 0 && data.Curve.IsCreated && st.Fired < data.TickCount)
+                {
+                    var msg = new FixedString512Bytes();
+                    msg.Append((FixedString128Bytes)"[Essence] Tick clip ");
+                    msg.Append(entity.ToFixedString());
+                    msg.Append((FixedString128Bytes)" ended having fired ");
+                    msg.Append(st.Fired);
+                    msg.Append((FixedString32Bytes)"/");
+                    msg.Append(data.TickCount);
+                    msg.Append((FixedString128Bytes)" ticks: target/writer never resolved (or ticks dropped).");
+                    Logger.LogWarning512(msg);
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         public EntityLinkRef Route;
         public IntrinsicKey Intrinsic;
         public int Amount;
+        public LinkMissBehavior LinkMiss;
 
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
@@ -17,7 +18,8 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
             {
                 Route = Route,
                 Intrinsic = Intrinsic,
-                Amount = Amount
+                Amount = Amount,
+                LinkMiss = LinkMiss
             });
 
             // Delivery latch starts disabled; armed on the clip's first rising edge at runtime.

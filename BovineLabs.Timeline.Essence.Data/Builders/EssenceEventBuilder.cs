@@ -9,6 +9,7 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
         public EntityLinkRef Route;
         public ConditionKey Event;
         public int Value;
+        public LinkMissBehavior LinkMiss;
 
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
@@ -17,7 +18,8 @@ namespace BovineLabs.Timeline.Essence.Data.Builders
             {
                 Route = Route,
                 Event = Event,
-                Value = Value
+                Value = Value,
+                LinkMiss = LinkMiss
             });
 
             // Delivery latch starts disabled; armed on the clip's first rising edge at runtime.

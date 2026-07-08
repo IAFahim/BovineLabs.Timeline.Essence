@@ -11,6 +11,7 @@ namespace BovineLabs.Timeline.Essence.Data
         public EntityLinkRef Route;
         public ConditionKey Event;
         public int Value;
+        public LinkMissBehavior LinkMiss;
     }
 
     public struct TimelineEssenceIntrinsicData : IComponentData
@@ -18,6 +19,7 @@ namespace BovineLabs.Timeline.Essence.Data
         public EntityLinkRef Route;
         public IntrinsicKey Intrinsic;
         public int Amount;
+        public LinkMissBehavior LinkMiss;
     }
 
     /// <summary>
@@ -38,6 +40,7 @@ namespace BovineLabs.Timeline.Essence.Data
         public StatKey Stat;
         public StatModifyType ModifyType;
         public float Value;
+        public LinkMissBehavior LinkMiss;
     }
 
     public struct TimelineEssenceStatState : IComponentData
@@ -61,6 +64,7 @@ namespace BovineLabs.Timeline.Essence.Data
         public int TickCount;
         public float Duration;
         public BlobAssetReference<DistributionCurveBlob> Curve;
+        public LinkMissBehavior LinkMiss;
     }
 
     public struct TimelineEssenceTickState : IComponentData
