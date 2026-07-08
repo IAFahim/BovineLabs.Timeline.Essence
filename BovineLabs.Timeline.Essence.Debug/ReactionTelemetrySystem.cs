@@ -141,7 +141,7 @@ namespace BovineLabs.Reaction.Debug
                 foreach (var kvp in events.AsMap())
                     history.Add(new ReactionEventHistoryRecord
                     {
-                        Key = kvp.Key.Value,
+                        Key = new BLId(kvp.Key.Value),
                         Value = kvp.Value.Read<int>(),
                         Timestamp = time
                     });

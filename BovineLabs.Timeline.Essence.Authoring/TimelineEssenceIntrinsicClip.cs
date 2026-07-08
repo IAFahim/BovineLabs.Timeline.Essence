@@ -43,7 +43,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            if (intrinsic.Key.ID == 0)
+            if (intrinsic.Key == 0)
             {
                 Debug.LogError(
                     $"{nameof(TimelineEssenceIntrinsicClip)} '{name}': intrinsic schema '{intrinsic.name}' has key 0 — asset not imported/registered; re-import it.",
@@ -61,7 +61,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceIntrinsicBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Intrinsic = intrinsic ? (IntrinsicKey)intrinsic.Key.ID : default(IntrinsicKey),
+                Intrinsic = intrinsic ? (IntrinsicKey)intrinsic.Key : default(IntrinsicKey),
                 Amount = amount,
                 LinkMiss = linkMissBehavior
             };

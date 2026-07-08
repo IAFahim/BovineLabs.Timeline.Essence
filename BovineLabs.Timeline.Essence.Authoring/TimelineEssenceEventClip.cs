@@ -43,7 +43,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            if (conditionEvent.Key.ID == 0)
+            if (conditionEvent.Key == 0)
             {
                 Debug.LogError(
                     $"{nameof(TimelineEssenceEventClip)} '{name}': ConditionEvent '{conditionEvent.name}' has key 0 — asset not imported/registered; re-import it.",
@@ -62,7 +62,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceEventBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Event = conditionEvent ? new ConditionKey(conditionEvent.Key) : ConditionKey.Null,
+                Event = conditionEvent ? (ConditionKey)conditionEvent.Key : ConditionKey.Null,
                 Value = value,
                 LinkMiss = linkMissBehavior
             };

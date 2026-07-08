@@ -48,7 +48,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            if (stat.Key.ID == 0)
+            if (stat.Key == 0)
             {
                 Debug.LogError(
                     $"{nameof(TimelineEssenceStatClip)} '{name}': stat schema '{stat.name}' has key 0 — asset not imported/registered; re-import it.",
@@ -74,7 +74,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             var builder = new EssenceStatBuilder
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
-                Stat = stat.Key.ID,
+                Stat = stat.Key,
                 ModifyType = StatAuthoringUtil.GetModifier(modifyType),
                 Value = modifyType is StatAuthoringType.Subtracted or StatAuthoringType.Reduced
                     or StatAuthoringType.Less

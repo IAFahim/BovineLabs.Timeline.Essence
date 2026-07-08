@@ -54,7 +54,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             var map = builder.AllocateHashMap(ref root.PayloadTypes, MaxEventKey + 1, 2);
             for (var key = 0; key <= MaxEventKey; key++)
             {
-                map.Add(new EventSubscriberKey(new BLId(key), eventType), ConditionPayloadType.Int32);
+                map.Add(new EventSubscriberKey(key, eventType), ConditionPayloadType.Int32);
             }
 
             var blob = builder.CreateBlobAssetReference<ConditionConfig.Data>(Allocator.Persistent);

@@ -20,7 +20,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // Two payload writers to the same ConditionKey + target in one frame must coalesce into a single summed map entry.
     public class TimelineEssenceCoalescingTests : TimelineEssenceTestFixture
     {
-        private static readonly ConditionKey Key = new() { Value = new BLId(100) };
+        private static readonly ConditionKey Key = new() { Value = 100 };
 
         private static BlobAssetReference<DistributionCurveBlob> FullCurve()
         {

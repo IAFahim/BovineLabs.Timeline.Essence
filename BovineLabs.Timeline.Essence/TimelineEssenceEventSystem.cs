@@ -212,7 +212,7 @@ namespace BovineLabs.Timeline.Essence
                     msg.Append((FixedString128Bytes)"[Essence] Event clip ");
                     msg.Append(entity.ToFixedString());
                     msg.Append((FixedString128Bytes)" (event id ");
-                    msg.Append(data.Event.Value.ID);
+                    msg.Append(data.Event.Value);
                     msg.Append((FixedString512Bytes)") ended without delivering: target/binding/writer never resolved. Check routeTo and that the target carries a ConditionEventWriter (EventWriterAuthoring).");
                     Logger.LogWarning512(msg);
                 }
@@ -272,7 +272,7 @@ namespace BovineLabs.Timeline.Essence
                         msg.Append((FixedString128Bytes)"[Essence] Same-frame event writes to ");
                         msg.Append(key.ToFixedString());
                         msg.Append((FixedString128Bytes)" (event id ");
-                        msg.Append(e.Event.Value.ID);
+                        msg.Append(e.Event.Value);
                         msg.Append((FixedString128Bytes)") cancelled to zero — nothing fired.");
                         Logger.LogWarning512(msg);
                     }
