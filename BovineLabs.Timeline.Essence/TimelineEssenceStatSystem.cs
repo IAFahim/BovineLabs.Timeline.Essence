@@ -168,7 +168,7 @@ namespace BovineLabs.Timeline.Essence
                 // Removal keys on AppliedTarget + clipEntity, never binding.Value — so do NOT gate on the current
                 // binding. If the TrackBinding went null before the deactivation edge, the modifier would otherwise
                 // leak on the (still-living, routed) target and AppliedTarget would never clear.
-                if (data.Stat.Value.IsNull()) return;
+                if (data.Stat.Value.IsNull) return;
 
                 if (state.AppliedTarget == Entity.Null) return;
 

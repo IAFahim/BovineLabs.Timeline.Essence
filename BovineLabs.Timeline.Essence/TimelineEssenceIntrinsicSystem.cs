@@ -146,7 +146,7 @@ namespace BovineLabs.Timeline.Essence
                 EnabledRefRW<TimelineEssenceDeliveryPending> pending)
             {
                 var isEdge = !clipActivePrevious.ValueRO;
-                var hasPayload = !data.Intrinsic.Value.IsNull();
+                var hasPayload = !data.Intrinsic.Value.IsNull;
 
                 // Resolve the target only when something is (or just became) owed — and treat a missing Intrinsic
                 // buffer as not-yet-resolved so it retries instead of being dropped in ApplyJob.
@@ -203,7 +203,7 @@ namespace BovineLabs.Timeline.Essence
                     msg.Append((FixedString128Bytes)"[Essence] Intrinsic clip ");
                     msg.Append(entity.ToFixedString());
                     msg.Append((FixedString128Bytes)" (intrinsic id ");
-                    msg.Append(data.Intrinsic.Value);
+                    msg.Append(data.Intrinsic.Value.RawValue);
                     msg.Append((FixedString512Bytes)") ended without delivering: target/binding/buffer never resolved. Check routeTo and that the target carries an Intrinsic buffer (StatAuthoring).");
                     Logger.LogWarning512(msg);
                 }

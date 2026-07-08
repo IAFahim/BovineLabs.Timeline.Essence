@@ -68,7 +68,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             var data = new TimelineEssenceStatData
             {
                 Route = new EntityLinkRef { ReadRootFrom = Target.Owner },
-                Stat = new StatKey { Value = 42 },
+                Stat = new StatKey { Value = new BovineLabs.Core.BLId(42) },
                 ModifyType = StatModifyType.Added,
                 Value = 3.14f
             };

@@ -1,5 +1,5 @@
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // original fix scope. Drives the real systems so the late-resolution retry behaviour is locked, not just reasoned.
     public class TimelineEssenceTickStatSystemTests : TimelineEssenceTestFixture
     {
-        private static readonly ConditionKey EventKey = new() { Value = 100 };
+        private static readonly ConditionKey EventKey = new() { Value = new BovineLabs.Core.BLId(100) };
 
         private static BlobAssetReference<DistributionCurveBlob> FullCurve()
         {

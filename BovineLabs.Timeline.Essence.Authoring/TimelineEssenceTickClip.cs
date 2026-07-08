@@ -78,7 +78,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
             {
                 Route = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                 Mode = mode,
-                Event = mode == EssenceTickMode.Event && conditionEvent ? (ConditionKey)conditionEvent.Key : ConditionKey.Null,
+                Event = mode == EssenceTickMode.Event && conditionEvent ? new ConditionKey(conditionEvent.Key) : ConditionKey.Null,
                 Intrinsic = mode == EssenceTickMode.Intrinsic && intrinsic ? (IntrinsicKey)intrinsic.Key : default(IntrinsicKey),
                 ValuePerTick = valuePerTick,
                 TickCount = math.max(0, tickCount),

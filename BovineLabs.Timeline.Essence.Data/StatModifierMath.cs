@@ -9,7 +9,7 @@ namespace BovineLabs.Timeline.Essence.Data
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryBuildStatModifier(StatKey stat, StatModifyType modifyType, float value, out StatModifier modifier)
         {
-            if (stat.Value == 0)
+            if (stat.Value.IsNull)
             {
                 modifier = default;
                 return false;

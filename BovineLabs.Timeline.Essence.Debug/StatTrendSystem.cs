@@ -1,6 +1,6 @@
 #if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Essence.Data;
 using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
@@ -61,7 +61,7 @@ namespace BovineLabs.Essence.Debug
                 foreach (var stat in stats.AsMap())
                     trend.Add(new StatTrendSample
                     {
-                        Key = new BLId(stat.Key.Value),
+                        Key = stat.Key.Value,
                         Value = stat.Value.Value,
                         Timestamp = time
                     });

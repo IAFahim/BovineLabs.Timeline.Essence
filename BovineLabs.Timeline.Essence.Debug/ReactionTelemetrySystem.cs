@@ -4,7 +4,7 @@ using BovineLabs.Core;
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Active;
@@ -141,7 +141,7 @@ namespace BovineLabs.Reaction.Debug
                 foreach (var kvp in events.AsMap())
                     history.Add(new ReactionEventHistoryRecord
                     {
-                        Key = new BLId(kvp.Key.Value),
+                        Key = kvp.Key.Value,
                         Value = kvp.Value.Read<int>(),
                         Timestamp = time
                     });

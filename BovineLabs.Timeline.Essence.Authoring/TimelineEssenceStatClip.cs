@@ -48,7 +48,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            if (stat.Key == 0)
+            if (stat.Key.IsNull)
             {
                 Debug.LogError(
                     $"{nameof(TimelineEssenceStatClip)} '{name}': stat schema '{stat.name}' has key 0 — asset not imported/registered; re-import it.",

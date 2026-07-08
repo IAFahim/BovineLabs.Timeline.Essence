@@ -1,5 +1,5 @@
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // and a Retry that later becomes resolvable fires exactly once at the LINKED entity.
     public class TimelineEssenceLinkMissTests : TimelineEssenceTestFixture
     {
-        private static readonly ConditionKey Key = new() { Value = 100 };
+        private static readonly ConditionKey Key = new() { Value = new BovineLabs.Core.BLId(100) };
         private const ushort LinkKey = 7;
 
         private (Entity clip, Entity binding) MakeLinkedEventClip(LinkMissBehavior policy, int value = 5)

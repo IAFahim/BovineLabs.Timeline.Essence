@@ -144,7 +144,7 @@ namespace BovineLabs.Timeline.Essence
                 if (!TickMath.TryAdvance(data, (double)localTime.Value, !previous.ValueRO, ref tickState, out var delta))
                     return;
 
-                if (data.Intrinsic.Value.IsNull())
+                if (data.Intrinsic.Value.IsNull)
                     return;
 
                 var result = TimelineEssenceResolver.TryResolveLinkedTarget(data.Route, data.LinkMiss, binding.Value,

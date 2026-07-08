@@ -1,6 +1,6 @@
 using BovineLabs.Core.Collections;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Testing;
 using Unity.Collections;
@@ -54,7 +54,7 @@ namespace BovineLabs.Timeline.Essence.Tests
             var map = builder.AllocateHashMap(ref root.PayloadTypes, MaxEventKey + 1, 2);
             for (var key = 0; key <= MaxEventKey; key++)
             {
-                map.Add(new EventSubscriberKey(key, eventType), ConditionPayloadType.Int32);
+                map.Add(new EventSubscriberKey(new BovineLabs.Core.BLId(key), eventType), ConditionPayloadType.Int32);
             }
 
             var blob = builder.CreateBlobAssetReference<ConditionConfig.Data>(Allocator.Persistent);

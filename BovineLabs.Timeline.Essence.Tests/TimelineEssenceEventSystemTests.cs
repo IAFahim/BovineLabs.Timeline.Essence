@@ -1,5 +1,5 @@
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // bug hid. Frame transitions mimic the core ClipActivePreviousSystem (copies ClipActive -> ClipActivePrevious each frame).
     public class TimelineEssenceEventSystemTests : TimelineEssenceTestFixture
     {
-        private static readonly ConditionKey Key = new() { Value = 100 };
+        private static readonly ConditionKey Key = new() { Value = new BovineLabs.Core.BLId(100) };
 
         private (Entity clip, Entity target) MakeClip(int value = 5)
         {

@@ -1,5 +1,6 @@
+using BovineLabs.Core;
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using Unity.Collections;
 using Unity.Entities;
 

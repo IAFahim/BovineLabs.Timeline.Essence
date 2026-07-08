@@ -43,7 +43,7 @@ namespace BovineLabs.Timeline.Essence.Authoring
                 return;
             }
 
-            if (intrinsic.Key == 0)
+            if (intrinsic.Key.IsNull)
             {
                 Debug.LogError(
                     $"{nameof(TimelineEssenceIntrinsicClip)} '{name}': intrinsic schema '{intrinsic.name}' has key 0 — asset not imported/registered; re-import it.",

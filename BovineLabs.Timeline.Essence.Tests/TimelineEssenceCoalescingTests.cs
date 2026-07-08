@@ -3,7 +3,7 @@
 // was re-resolved before the fork was bumped. The fix makes same-frame int-payload writes to the same ConditionKey
 // on one target ACCUMULATE (sum; entry removed when the sum is 0) instead of the second write being rejected.
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Nerve.ObjectManagement;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
@@ -20,7 +20,7 @@ namespace BovineLabs.Timeline.Essence.Tests
     // Two payload writers to the same ConditionKey + target in one frame must coalesce into a single summed map entry.
     public class TimelineEssenceCoalescingTests : TimelineEssenceTestFixture
     {
-        private static readonly ConditionKey Key = new() { Value = 100 };
+        private static readonly ConditionKey Key = new() { Value = new BovineLabs.Core.BLId(100) };
 
         private static BlobAssetReference<DistributionCurveBlob> FullCurve()
         {

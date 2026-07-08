@@ -102,7 +102,7 @@ namespace BovineLabs.Timeline.Essence.Editor
                         continue;
                     }
 
-                    var key0 = e.Key == 0;
+                    var key0 = e.Key.IsNull;
                     var nested = intrinsicNested.Contains(e);
                     var unregistered = !nested && !registered.Contains(e);
 
